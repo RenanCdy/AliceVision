@@ -14,6 +14,7 @@ set(depthMap_files_headers
   SgmParams.hpp
   Tile.hpp
   volumeIO.hpp
+  depthMapApi.hpp
 )
 
 # Sources
@@ -118,6 +119,14 @@ set(depthMap_cuda_files_sources
   ${depthMap_cuda_planeSweeping_sources}
 )
 
+# with DCP++ .def file for exporting symbols does not work
+set(AutoExport ${CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS})
+if(BUILD_SHARED_LIBS)
+  if(WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
+  endif()
+endif()
+
 alicevision_add_library(aliceVision_depthMap
   USE_CUDA
   SOURCES
@@ -139,6 +148,22 @@ alicevision_add_library(aliceVision_depthMap
   PUBLIC_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS}
 )
+
+# enable DPC++ compiler for windows
+if(WIN32)
+  set_target_properties( aliceVision_depthMap 
+    PROPERTIES
+    VS_PLATFORM_TOOLSET $(DefaultIntelDPCppPlatformToolset) 
+  )
+  if(BUILD_SHARED_LIBS)
+    set(aliceVision_depthMap
+      PROPERTIES
+      CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ${AutoExport})
+  endif()
+endif()
+unset(AutoExport)
+
+
 
 # target_compile_definitions(aliceVision_depthMap PUBLIC TSIM_USE_FLOAT)
 

@@ -8,6 +8,8 @@
 
 #include <aliceVision/mvsUtils/MultiViewParams.hpp>
 
+#include "depthMapApi.hpp"
+
 namespace aliceVision {
 namespace depthMap {
 
@@ -15,7 +17,7 @@ namespace depthMap {
  * @class IGPUJob
  * @brief Interface for multi-GPUs computation.
  */
-class IGPUJob
+aliceVision_depthMap_DLL_API class IGPUJob
 {
 public:
 
@@ -33,7 +35,7 @@ public:
  * @param[in,out] gpujob the object that wrap computation (should use IGPUJob interface)
  * @param[in] nbGPUsToUse the number of GPUs to use
  */
-void computeOnMultiGPUs(const std::vector<int>& cams, IGPUJob& gpujob, int nbGPUsToUse);
+aliceVision_depthMap_DLL_API void computeOnMultiGPUs(const std::vector<int>& cams, IGPUJob& gpujob, int nbGPUsToUse);
 
 } // namespace depthMap
 } // namespace aliceVision
