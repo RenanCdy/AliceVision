@@ -151,6 +151,7 @@ alicevision_add_library(aliceVision_depthMap
 
 # enable DPC++ compiler for windows
 if(WIN32)
+  target_compile_definitions(aliceVision_depthMap PUBLIC EIGEN_DONT_VECTORIZE)    
   set_target_properties( aliceVision_depthMap 
     PROPERTIES
     VS_PLATFORM_TOOLSET $(DefaultIntelDPCppPlatformToolset) 
