@@ -1,0 +1,258 @@
+---
+MainSourceFile:  'c:\users\thomas\documents\projects\pixfield\meshroom\alicevision\src\dpct_output\alicevision\depthmap\BufPtr.hpp'
+Replacements:
+  - FilePath:        'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Offset:          0
+    Length:          0
+    ReplacementText: "#include <sycl/sycl.hpp>\r\n#include <dpct/dpct.hpp>\r\n"
+    ConstantFlag:    ''
+    ConstantOffset:  0
+    InitStr:         ''
+    NewHostVarName:  ''
+    BlockLevelFormatFlag: false
+  - FilePath:        'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Offset:          392
+    Length:          8
+    ReplacementText: DPCT_COMPATIBILITY_TEMP
+    ConstantFlag:    ''
+    ConstantOffset:  0
+    InitStr:         ''
+    NewHostVarName:  ''
+    BlockLevelFormatFlag: false
+  - FilePath:        'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Offset:          428
+    Length:          9
+    ReplacementText: ''
+    ConstantFlag:    ''
+    ConstantOffset:  0
+    InitStr:         ''
+    NewHostVarName:  ''
+    BlockLevelFormatFlag: false
+  - FilePath:        'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Offset:          437
+    Length:          10
+    ReplacementText: ''
+    ConstantFlag:    ''
+    ConstantOffset:  0
+    InitStr:         ''
+    NewHostVarName:  ''
+    BlockLevelFormatFlag: false
+  - FilePath:        'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Offset:          467
+    Length:          8
+    ReplacementText: ''
+    ConstantFlag:    ''
+    ConstantOffset:  0
+    InitStr:         ''
+    NewHostVarName:  ''
+    BlockLevelFormatFlag: false
+MainSourceFilesDigest:
+  - MainSourceFile:  'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\BufPtr.hpp'
+    Digest:          c64d1d917476d0405c503d24917e6253
+DpctVersion:     2023.2.0
+MainHelperFileName: dpct
+USMLevel:        ''
+FeatureMap:
+  device.hpp:
+    device_ext:
+      IsCalled:        false
+      SubFeatureMap:
+        device_ext_queues_wait_and_throw:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\DepthMapEstimator.cpp'
+          SubFeatureMap:   {}
+    get_current_device:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\DepthMapEstimator.cpp'
+      SubFeatureMap:   {}
+    get_default_queue:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\DepthMapEstimator.cpp'
+      SubFeatureMap:   {}
+    typedef_queue_ptr:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\Refine.cpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\Refine.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\Sgm.cpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\Sgm.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\DeviceStreamManager.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\planeSweeping\deviceDepthSimilarityMap.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\planeSweeping\deviceSimilarityVolume.hpp'
+      SubFeatureMap:   {}
+  dpct.hpp:
+    check_error_code:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:   {}
+  image.hpp:
+    create_image_wrapper:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:   {}
+    image_data:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:
+        image_data_set_channel:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_data_set_data_ptr:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_data_set_data_type:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_data_set_pitch:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_data_set_x:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_data_set_y:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+    image_data_type:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include\driver_types.h'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:   {}
+    image_wrapper_base:
+      IsCalled:        false
+      SubFeatureMap:
+        image_wrapper_base_set_addressing_mode:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_wrapper_base_set_coordinate_normalization_mode_enum:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        image_wrapper_base_set_filtering_mode:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+    image_wrapper_base_p_alias:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\DeviceMipmapImage.hpp'
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:   {}
+    sampling_info:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+      SubFeatureMap:
+        sampling_info_set_addressing_mode:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        sampling_info_set_coordinate_normalization_mode_enum:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+        sampling_info_set_filtering_mode:
+          IsCalled:        true
+          CallerSrcFiles:
+            - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\host\memory.hpp'
+          SubFeatureMap:   {}
+  math.hpp:
+    min_max:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\mvsData\ROI.hpp'
+      SubFeatureMap:   {}
+  memory.hpp:
+    constant_memory_alias:
+      IsCalled:        true
+      CallerSrcFiles:
+        - 'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src\aliceVision\depthMap\cuda\device\DeviceCameraParams.hpp'
+      SubFeatureMap:   {}
+CompileTargets:  {}
+OptionMap:
+  AnalysisScopePath:
+    Value:           'C:\Users\Thomas\Documents\projects\pixfield\Meshroom\AliceVision\src'
+    Specified:       false
+  AsyncHandler:
+    Value:           'false'
+    Specified:       false
+  CommentsEnabled:
+    Value:           'false'
+    Specified:       false
+  CompilationsDir:
+    Value:           ''
+    Specified:       false
+  CtadEnabled:
+    Value:           'false'
+    Specified:       false
+  CustomHelperFileName:
+    Value:           dpct
+    Specified:       false
+  EnablepProfiling:
+    Value:           'false'
+    Specified:       false
+  ExperimentalFlag:
+    Value:           '0'
+    Specified:       false
+  ExplicitClNamespace:
+    Value:           'false'
+    Specified:       false
+  ExplicitNamespace:
+    Value:           '20'
+    Specified:       false
+  ExtensionDDFlag:
+    Value:           '0'
+    Specified:       false
+  ExtensionDEFlag:
+    Value:           '4294967295'
+    Specified:       false
+  NDRangeDim:
+    Value:           '3'
+    Specified:       false
+  NoDRYPattern:
+    Value:           'false'
+    Specified:       false
+  OptimizeMigration:
+    Value:           'false'
+    Specified:       false
+  ProcessAll:
+    Value:           'false'
+    Specified:       false
+  RuleFile:
+    Value:           ''
+    Specified:       false
+  SyclNamedLambda:
+    Value:           'false'
+    Specified:       false
+  UsmLevel:
+    Value:           '1'
+    Specified:       false
+  VcxprojFile:
+    Value:           ''
+    Specified:       false
+...
