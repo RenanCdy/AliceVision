@@ -7,7 +7,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
-#include <aliceVision/depthMap/BufPtr.hpp>
+#include "aliceVision/depthMap/BufPtr.hpp"
 
 namespace aliceVision {
 namespace depthMap {
@@ -93,6 +93,54 @@ __device__ inline float4 tex2D_float4(cudaTextureObject_t rc_tex, float x, float
 }
 
 #endif
+
+template <typename T>
+__device__ inline T sampleTex2DLod(cudaTextureObject_t tex, float x, int width, float y, int height, int level)
+{
+    float one_over_width = 1.0f / (float)width;
+    float one_over_height = 1.0f / (float)width;
+    if (level == 0)
+    {
+        float u = (x+0.5)*one_over_width;
+        float v = (2*y + 1) / 3 * one_over_height;
+        return tex2D<T>(tex, u, v);
+    }
+    else
+    {
+        int offset = 0;
+        for (int l = level-1; l > 0; --l)
+        {
+            offset += (1<<l) * width * sizeof(CudaRGBA);
+            offset = ((offset + 512-1)/512)*512;
+        }
+        offset /= sizeof(CudaRGBA);
+
+        float u = (x+0.5+offset)*one_over_width / (1<<level);
+        float v = ((y+0.5)*one_over_height / (1<<level) + 1.0f) * 2.0f / 3.0f;
+        return tex2D<T>(tex, u, v);
+    }
+}
+
+template <typename T>
+__device__ inline T _tex2DLod(cudaTextureObject_t tex, float x, int width, float y, int height, float z)
+{
+    // TODO: Handle borders, etc...
+
+    int highLevel = (int)floor(z);
+    int lowLevel  = ( (float)highLevel == z) ? highLevel : (highLevel+1);
+
+    if (highLevel == lowLevel) 
+    {
+        return sampleTex2DLod<T>(tex, x, width, y, height, highLevel);
+    }
+    else
+    {
+        T high = sampleTex2DLod<T>(tex, x, width, y, height, highLevel);
+        T low  = sampleTex2DLod<T>(tex, (x+0.5)/2.0 - 0.5f, width/2, (y+0.5)/2.0f-0.5f, height/2, lowLevel);
+        float t = z - (float)highLevel;
+        return (1.0f - t) * high + t * low;
+    }
+}
 
 } // namespace depthMap
 } // namespace aliceVision

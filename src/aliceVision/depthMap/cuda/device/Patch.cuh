@@ -516,8 +516,8 @@ __device__ inline float compNCCby3DptsYK(const DeviceCameraParams& rcDeviceCamPa
     simStat sst;
 
     // compute patch center color (CIELAB) at R and T mipmap image level
-    const float4 rcCenterColor = tex2DLod<float4>(rcMipmapImage_tex, (rp.x + 0.5f) * rcInvLevelWidth, (rp.y + 0.5f) * rcInvLevelHeight, rcMipmapLevel);
-    const float4 tcCenterColor = tex2DLod<float4>(tcMipmapImage_tex, (tp.x + 0.5f) * tcInvLevelWidth, (tp.y + 0.5f) * tcInvLevelHeight, tcMipmapLevel);
+    const float4 rcCenterColor = _tex2DLod<float4>(rcMipmapImage_tex, rp.x, rcLevelWidth, rp.y, rcLevelHeight, rcMipmapLevel);
+    const float4 tcCenterColor = _tex2DLod<float4>(tcMipmapImage_tex, tp.x, tcLevelWidth, tp.y, tcLevelHeight, tcMipmapLevel);
 
     // check the alpha values of the patch pixel center of the R and T cameras
     if(rcCenterColor.w < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA || tcCenterColor.w < ALICEVISION_DEPTHMAP_TC_MIN_ALPHA)
@@ -538,8 +538,8 @@ __device__ inline float compNCCby3DptsYK(const DeviceCameraParams& rcDeviceCamPa
             const float2 tpc = project3DPoint(tcDeviceCamParams.P, p);
 
             // get R and T image color (CIELAB) from 2d coordinates
-            const float4 rcPatchCoordColor = tex2DLod<float4>(rcMipmapImage_tex, (rpc.x + 0.5f) * rcInvLevelWidth, (rpc.y + 0.5f) * rcInvLevelHeight, rcMipmapLevel);
-            const float4 tcPatchCoordColor = tex2DLod<float4>(tcMipmapImage_tex, (tpc.x + 0.5f) * tcInvLevelWidth, (tpc.y + 0.5f) * tcInvLevelHeight, tcMipmapLevel);
+            const float4 rcPatchCoordColor = _tex2DLod<float4>(rcMipmapImage_tex, rpc.x, rcLevelWidth, rpc.y, rcLevelHeight, rcMipmapLevel);
+            const float4 tcPatchCoordColor = _tex2DLod<float4>(tcMipmapImage_tex, tpc.x, tcLevelWidth, tpc.y, tcLevelHeight, tcMipmapLevel);
 
             // compute weighting based on:
             // - color difference to the center pixel of the patch:
@@ -634,8 +634,8 @@ __device__ inline float compNCCby3DptsYK_customPatchPattern(const DeviceCameraPa
     const float tcInvLevelHeight = 1.f / float(tcLevelHeight);
 
     // get patch center pixel alpha at the given mipmap image level
-    const float rcAlpha = tex2DLod<float4>(rcMipmapImage_tex, (rp.x + 0.5f) * rcInvLevelWidth, (rp.y + 0.5f) * rcInvLevelHeight, mipmapLevel).w; // alpha only
-    const float tcAlpha = tex2DLod<float4>(tcMipmapImage_tex, (tp.x + 0.5f) * tcInvLevelWidth, (tp.y + 0.5f) * tcInvLevelHeight, mipmapLevel).w; // alpha only
+    const float rcAlpha = _tex2DLod<float4>(rcMipmapImage_tex, rp.x, rcLevelWidth, rp.y, rcLevelHeight, mipmapLevel).w; // alpha only
+    const float tcAlpha = _tex2DLod<float4>(tcMipmapImage_tex, tp.x, tcLevelWidth, tp.y, tcLevelHeight, mipmapLevel).w; // alpha only
 
     // check the alpha values of the patch pixel center of the R and T cameras
     if(rcAlpha < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA || tcAlpha < ALICEVISION_DEPTHMAP_TC_MIN_ALPHA)
@@ -666,8 +666,8 @@ __device__ inline float compNCCby3DptsYK_customPatchPattern(const DeviceCameraPa
         const DevicePatchPatternSubpart& subpart = constantPatchPattern_d.subparts[s];
 
         // compute patch center color (CIELAB) at subpart level resolution
-        const float4 rcCenterColor = tex2DLod<float4>(rcMipmapImage_tex, (rp.x + 0.5f) * rcInvLevelWidth, (rp.y + 0.5f) * rcInvLevelHeight, rcMipmapLevel + subpart.level);
-        const float4 tcCenterColor = tex2DLod<float4>(tcMipmapImage_tex, (tp.x + 0.5f) * tcInvLevelWidth, (tp.y + 0.5f) * tcInvLevelHeight, tcMipmapLevel + subpart.level);
+        const float4 rcCenterColor = _tex2DLod<float4>(rcMipmapImage_tex, rp.x, rcLevelWidth, rp.y, rcLevelHeight, rcMipmapLevel + subpart.level);
+        const float4 tcCenterColor = _tex2DLod<float4>(tcMipmapImage_tex, tp.x, tcLevelWidth, tp.y, tcLevelHeight, tcMipmapLevel + subpart.level);
 
         if(subpart.isCircle)
         {
@@ -684,8 +684,8 @@ __device__ inline float compNCCby3DptsYK_customPatchPattern(const DeviceCameraPa
                 const float2 tpc = project3DPoint(tcDeviceCamParams.P, p);
 
                 // get R and T image color (CIELAB) from 2d coordinates
-                const float4 rcPatchCoordColor = tex2DLod<float4>(rcMipmapImage_tex, (rpc.x + 0.5f) * rcInvLevelWidth, (rpc.y + 0.5f) * rcInvLevelHeight, rcMipmapLevel + subpart.level);
-                const float4 tcPatchCoordColor = tex2DLod<float4>(tcMipmapImage_tex, (tpc.x + 0.5f) * tcInvLevelWidth, (tpc.y + 0.5f) * tcInvLevelHeight, tcMipmapLevel + subpart.level);
+                const float4 rcPatchCoordColor = _tex2DLod<float4>(rcMipmapImage_tex, rpc.x, rcLevelWidth, rpc.y, rcLevelHeight, rcMipmapLevel + subpart.level);
+                const float4 tcPatchCoordColor = _tex2DLod<float4>(tcMipmapImage_tex, tpc.x, tcLevelWidth, tpc.y, tcLevelHeight, tcMipmapLevel + subpart.level);
 
                 // compute weighting based on color difference to the center pixel of the patch:
                 // - low value (close to 0) means that the color is different from the center pixel (ie. strongly supported surface)
@@ -710,8 +710,8 @@ __device__ inline float compNCCby3DptsYK_customPatchPattern(const DeviceCameraPa
                     const float2 tpc = project3DPoint(tcDeviceCamParams.P, p);
 
                     // get R and T image color (CIELAB) from 2d coordinates
-                    const float4 rcPatchCoordColor = tex2DLod<float4>(rcMipmapImage_tex, (rpc.x + 0.5f) * rcInvLevelWidth, (rpc.y + 0.5f) * rcInvLevelHeight, rcMipmapLevel + subpart.level);
-                    const float4 tcPatchCoordColor = tex2DLod<float4>(tcMipmapImage_tex, (tpc.x + 0.5f) * tcInvLevelWidth, (tpc.y + 0.5f) * tcInvLevelHeight, tcMipmapLevel + subpart.level);
+                    const float4 rcPatchCoordColor = _tex2DLod<float4>(rcMipmapImage_tex, rpc.x, rcLevelWidth, rpc.y, rcLevelHeight, rcMipmapLevel + subpart.level);
+                    const float4 tcPatchCoordColor = _tex2DLod<float4>(tcMipmapImage_tex, tpc.x, tcLevelWidth, tpc.y, tcLevelHeight, tcMipmapLevel + subpart.level);
 
                     // compute weighting based on:
                     // - color difference to the center pixel of the patch:

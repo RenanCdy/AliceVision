@@ -1128,6 +1128,8 @@ struct CudaRGBATexture
     }
 };
 
+using _cudaMipmappedArray_t = CudaDeviceMemoryPitched<CudaRGBA, 2>;
+
 } // namespace depthMap
 } // namespace aliceVision
 

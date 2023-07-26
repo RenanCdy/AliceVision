@@ -708,8 +708,8 @@ __global__ void volume_agregateCostVolumeAtXinSlices_kernel(const cudaTextureObj
           const int imX1 = imX0 - ySign * step * (axisT.y == 0); // M1
           const int imY1 = imY0 - ySign * step * (axisT.y == 1);
 
-          const float4 gcr0 = tex2DLod<float4>(rcMipmapImage_tex, (float(imX0) + 0.5f) / float(rcSgmLevelWidth), (float(imY0) + 0.5f) / float(rcSgmLevelHeight), rcMipmapLevel);
-          const float4 gcr1 = tex2DLod<float4>(rcMipmapImage_tex, (float(imX1) + 0.5f) / float(rcSgmLevelWidth), (float(imY1) + 0.5f) / float(rcSgmLevelHeight), rcMipmapLevel);
+          const float4 gcr0 = _tex2DLod<float4>(rcMipmapImage_tex, float(imX0), rcSgmLevelWidth, float(imY0), rcSgmLevelHeight, rcMipmapLevel);
+          const float4 gcr1 = _tex2DLod<float4>(rcMipmapImage_tex, float(imX1), rcSgmLevelWidth, float(imY1), rcSgmLevelHeight, rcMipmapLevel);
           const float deltaC = euclideanDist3(gcr0, gcr1);
 
           // sigmoid f(x) = i + (a - i) * (1 / ( 1 + e^(10 * (x - P2) / w)))

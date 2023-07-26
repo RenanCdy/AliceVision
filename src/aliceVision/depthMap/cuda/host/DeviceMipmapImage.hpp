@@ -76,7 +76,8 @@ private:
 
     // private members
 
-    cudaMipmappedArray_t _mipmappedArray = nullptr;    //< mipmapped array in device memory
+    // cudaMipmappedArray_t _mipmappedArray = nullptr;    //< mipmapped array in device memory
+    _cudaMipmappedArray_t _mipmappedArray;             //< mipmapped array in device memory
     cudaTextureObject_t _textureObject = 0;            //< mipmapped array texture object with normalized coordinates
     unsigned int _minDownscale = 0;                    //< the min downscale factor (must be power of two), first downscale level
     unsigned int _maxDownscale = 0;                    //< the max downscale factor (must be power of two), last downscale level

@@ -17,7 +17,7 @@ namespace depthMap {
  * @param[in] in_img_dmp The given image buffer in device memory (used at level 0)
  * @param[in] levels The number of levels to generate in the CUDA mipmapped array
  */
-extern void cuda_createMipmappedArrayFromImage(cudaMipmappedArray_t* out_mipmappedArrayPtr,
+extern void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipmappedArrayPtr,
                                                const CudaDeviceMemoryPitched<CudaRGBA, 2>& in_img_dmp,
                                                const unsigned int levels);
 
@@ -29,7 +29,7 @@ extern void cuda_createMipmappedArrayFromImage(cudaMipmappedArray_t* out_mipmapp
  * @param[in] levels The number of levels generated in the CUDA mipmapped array
  */
 extern void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappedArray_texPtr,
-                                             const cudaMipmappedArray_t in_mipmappedArray,
+                                             const _cudaMipmappedArray_t& in_mipmappedArray,
                                              const unsigned int levels);
 
 /**

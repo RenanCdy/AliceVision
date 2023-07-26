@@ -235,7 +235,7 @@ __global__ void computeSgmUpscaledDepthPixSizeMap_nearestNeighbor_kernel(float2*
     float2* out_depthPixSize = get2DBufferAt(out_upscaledDepthPixSizeMap_d, out_upscaledDepthPixSizeMap_p, roiX, roiY);
 
     // filter masked pixels (alpha < 0.9f)
-    if(tex2DLod<float4>(rcMipmapImage_tex, (float(x) + 0.5f) / float(rcLevelWidth), (float(y) + 0.5f) / float(rcLevelHeight), rcMipmapLevel).w < 0.9f)
+    if(_tex2DLod<float4>(rcMipmapImage_tex, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w < 0.9f)
     {
         *out_depthPixSize = make_float2(-2.f, 0.f);
         return;
@@ -299,7 +299,7 @@ __global__ void computeSgmUpscaledDepthPixSizeMap_bilinear_kernel(float2* out_up
     float2* out_depthPixSize = get2DBufferAt(out_upscaledDepthPixSizeMap_d, out_upscaledDepthPixSizeMap_p, roiX, roiY);
 
     // filter masked pixels with alpha
-    if(tex2DLod<float4>(rcMipmapImage_tex, (float(x) + 0.5f) / float(rcLevelWidth), (float(y) + 0.5f) / float(rcLevelHeight), rcMipmapLevel).w < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA)
+    if(_tex2DLod<float4>(rcMipmapImage_tex, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA)
     {
         *out_depthPixSize = make_float2(-2.f, 0.f);
         return;
@@ -502,10 +502,10 @@ __global__ void optimize_varLofLABtoW_kernel(float* out_varianceMap_d, int out_v
 
     // compute gradient size of L
     // note: we use 0.5f offset because rcTex texture use interpolation
-    const float xM1 = tex2DLod<float4>(rcMipmapImage_tex, ((x - 1.f) + 0.5f) * invLevelWidth, ((y + 0.f) + 0.5f) * invLevelHeight, rcMipmapLevel).x;
-    const float xP1 = tex2DLod<float4>(rcMipmapImage_tex, ((x + 1.f) + 0.5f) * invLevelWidth, ((y + 0.f) + 0.5f) * invLevelHeight, rcMipmapLevel).x;
-    const float yM1 = tex2DLod<float4>(rcMipmapImage_tex, ((x + 0.f) + 0.5f) * invLevelWidth, ((y - 1.f) + 0.5f) * invLevelHeight, rcMipmapLevel).x;
-    const float yP1 = tex2DLod<float4>(rcMipmapImage_tex, ((x + 0.f) + 0.5f) * invLevelWidth, ((y + 1.f) + 0.5f) * invLevelHeight, rcMipmapLevel).x;
+    const float xM1 = _tex2DLod<float4>(rcMipmapImage_tex, (x - 1.f), rcLevelWidth, (y + 0.f), rcLevelHeight, rcMipmapLevel).x;
+    const float xP1 = _tex2DLod<float4>(rcMipmapImage_tex, (x + 1.f), rcLevelWidth, (y + 0.f), rcLevelHeight, rcMipmapLevel).x;
+    const float yM1 = _tex2DLod<float4>(rcMipmapImage_tex, (x + 0.f), rcLevelWidth, (y - 1.f), rcLevelHeight, rcMipmapLevel).x;
+    const float yP1 = _tex2DLod<float4>(rcMipmapImage_tex, (x + 0.f), rcLevelWidth, (y + 1.f), rcLevelHeight, rcMipmapLevel).x;
 
     const float2 g = make_float2(xM1 - xP1, yM1 - yP1); // TODO: not divided by 2?
     const float grad = size(g);

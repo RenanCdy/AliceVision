@@ -21,8 +21,7 @@ DeviceMipmapImage::~DeviceMipmapImage()
       CHECK_CUDA_RETURN_ERROR_NOEXCEPT(cudaDestroyTextureObject(_textureObject));
 
     // free mipmapped array
-    if(_mipmappedArray != nullptr)
-      CHECK_CUDA_RETURN_ERROR_NOEXCEPT(cudaFreeMipmappedArray(_mipmappedArray));
+    _mipmappedArray.deallocate();
 }
 
 void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, int minDownscale, int maxDownscale)
@@ -39,8 +38,7 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
       CHECK_CUDA_RETURN_ERROR(cudaDestroyTextureObject(_textureObject));
 
     // destroy previous mipmapped array
-    if(_mipmappedArray != nullptr)
-      CHECK_CUDA_RETURN_ERROR(cudaFreeMipmappedArray(_mipmappedArray));
+    _mipmappedArray.deallocate();
 
     // allocate the device-sided full-size input image buffer
     auto img_dmpPtr = std::make_shared<CudaDeviceMemoryPitched<CudaRGBA, 2>>(in_img_hmh.getSize());
