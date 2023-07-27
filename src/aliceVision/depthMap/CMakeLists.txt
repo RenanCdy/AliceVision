@@ -36,6 +36,7 @@ set(depthMap_cuda_host_headers
   cuda/host/LRUCache.hpp
   cuda/host/divUp.hpp
   cuda/host/memory.hpp
+  cuda/host/MemoryLocker.hpp
 )
 
 # Cuda Host Sources
