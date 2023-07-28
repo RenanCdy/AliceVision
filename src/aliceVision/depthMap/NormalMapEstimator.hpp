@@ -11,6 +11,8 @@
 
 #include <vector>
 
+#include "depthMapApi.hpp"
+
 namespace aliceVision {
 namespace depthMap {
 
@@ -19,7 +21,7 @@ namespace depthMap {
  * @brief Wrap normal maps estimation computation.
  * @note Allows muli-GPUs computation (interface IGPUJob)
  */
-class NormalMapEstimator : public IGPUJob
+class aliceVision_depthMap_DLL_API NormalMapEstimator : public IGPUJob
 {
 public:
 
