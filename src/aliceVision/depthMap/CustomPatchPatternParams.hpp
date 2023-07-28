@@ -9,6 +9,8 @@
 #include <vector>
 #include <iostream>
 
+#include "depthMapApi.hpp"
+
 namespace aliceVision {
 namespace depthMap {
 
@@ -37,11 +39,12 @@ struct CustomPatchPatternParams
 
 // from istream
 // note: useful for command-line
-std::istream& operator>>(std::istream& is, CustomPatchPatternParams::SubpartParams& sp);
+aliceVision_depthMap_DLL_API std::istream& operator>>(std::istream& is, CustomPatchPatternParams::SubpartParams& sp);
 
 // to ostream
 // note: useful for command-line
-std::ostream& operator<<(std::ostream& os, const CustomPatchPatternParams::SubpartParams& sp);
+aliceVision_depthMap_DLL_API std::ostream& operator<<(std::ostream& os,
+                                                     const CustomPatchPatternParams::SubpartParams& sp);
 
 } // namespace depthMap
 } // namespace aliceVision

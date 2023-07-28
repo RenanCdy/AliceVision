@@ -121,6 +121,7 @@ set(LIBRARY_OUTPUT_PATH "${ALICEVISION_ROOT}/${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM
 if(WIN32)
   add_definitions(-DNOMINMAX)
   add_definitions(-D_USE_MATH_DEFINES)
+  add_definitions(-DEIGEN_DONT_VECTORIZE)
   if(MSVC)
     add_compile_options(/bigobj)
     add_compile_options(/MP)
