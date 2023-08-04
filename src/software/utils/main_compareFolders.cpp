@@ -91,7 +91,7 @@ int aliceVision_main(int argc, char** argv)
                 }
                 else
                 {
-                    image::Image<float> errors = (image - imageRef).cwiseAbs();
+                    image::RowMatrixXf errors = (image - imageRef).cwiseAbs();
                     double mean = errors.mean();
                     double min = errors.minCoeff();
                     double max = errors.maxCoeff();
