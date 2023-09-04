@@ -46,7 +46,7 @@ private:
     std::shared_ptr<sycl::buffer<SyclType, Dim>> m_buffer;
 };
 
-template <typename Type = CudaRGBA, unsigned Dim = 2>
+template <typename Type = CudaRGBA, unsigned Dim = 2, typename SyclType = typename sycl_type_mapper<Type>::type>
 class ImageLocker
 {
 public:

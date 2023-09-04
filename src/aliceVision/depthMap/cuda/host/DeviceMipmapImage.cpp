@@ -11,7 +11,6 @@
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceMipmappedArray.hpp>
 
-
 #include <aliceVision/depthMap/depthMapUtils.hpp>
 #include <aliceVision/depthMap/cuda/host/MemoryLocker.hpp>
 #include <dpct_output/aliceVision/depthMap/cuda/device/color.dp.hpp>

@@ -129,7 +129,7 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 alicevision_add_library(aliceVision_depthMap
-  USE_CUDA
+	USE_CUDA
   SOURCES
     ${depthMap_files_headers}
     ${depthMap_files_sources}
@@ -148,8 +148,64 @@ alicevision_add_library(aliceVision_depthMap
     aliceVision_sfmDataIO
   PUBLIC_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS}
+    "/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/"
+
 )
 
+
+set(USE_DEFAULT_FLAGS ON)
+if("${CMAKE_CXX_FLAGS}" STREQUAL "")
+    message(STATUS "Using DEFAULT compilation flags")
+else()
+    message(STATUS "Overriding DEFAULT compilation flags")
+    set(USE_DEFAULT_FLAGS OFF)
+endif()
+
+option(USE_NVIDIA_BACKEND      "Build for NVIDIA backend"     ON)
+#set(NVIDIA_GPU_CXX_FLAGS " -cxx=clang++ -O3 -std=c++17 -fsycl ")
+#string(APPEND CMAKE_CXX_FLAGS "${NVIDIA_GPU_CXX_FLAGS}") # Default flags for NVIDIA backend
+
+if(USE_NVIDIA_BACKEND)
+    message(STATUS "Enabling NVIDIA backend")
+    if(USE_DEFAULT_FLAGS)
+	    #set(CMAKE_CXX_FLAGS "${NVIDIA_GPU_CXX_FLAGS}") # Default flags for NVIDIA backend
+    endif()
+    if(USE_SM)
+        message("-- Building for SM_${USE_SM} compatibility")
+	#string(APPEND CMAKE_CXX_FLAGS " -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend --cuda-gpu-arch=sm_${USE_SM} ")
+    else()
+        message("-- Building for SM_80 compatibility (DEFAULT)")
+	#string(APPEND CMAKE_CXX_FLAGS " -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend --cuda-gpu-arch=sm_80 ")
+    endif()
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+	message("Compiling Depthmap with intel compiler")
+	#string(APPEND CMAKE_CXX_FLAGS " -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend -qopenmp ")
+	#target_include_directories(aliceVision_depthMap PRIVATE "/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/")
+	include_directories("/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/")
+	set(CMAKE_CUDA_HOST_COMPILER icpx)
+  add_compile_options(
+    	$<$<COMPILE_LANGUAGE:C>:-fiopenmp>
+    	$<$<COMPILE_LANGUAGE:CXX>:-fiopenmp -fsycl>
+    	$<$<COMPILE_LANGUAGE:CUDA>:-allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend>
+	)
+
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-error -fsycl")
+  string(APPEND CMAKE_C_FLAGS " -allow-unsupported-compiler -Wno-error")
+  string(APPEND CMAKE_CUDA_FLAGS " -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend ")
+  SET( CUDA_NVCC_FLAGS " ;-allow-unsupported-compiler;-fsycl;-fsycl-targets=nvptx64-nvidia-cuda;-Xsycl-target-backend;")
+
+  set(APPEND CMAKE_CUDA_FLAGS_RELEASE " -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend ")
+message(STATUS "Include Directories: ${CMAKE_INCLUDE_PATH}")
+message(STATUS "CXX Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "CUDA Flags: ${CUDA_NVCC_FLAGS}")
+
+
+
+	#target_compile_options(aliceVision_depthMap PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--allow-unsupported-compiler)
+endif()
+message(STATUS "Compilation flags set to: ${CMAKE_CXX_FLAGS}")
 # enable DPC++ compiler for windows
 if(WIN32)
   target_compile_definitions(aliceVision_depthMap PUBLIC EIGEN_DONT_VECTORIZE)    
