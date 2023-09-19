@@ -391,4 +391,16 @@ alicevision_add_software(aliceVision_mergeMeshes
         ${Boost_LIBRARIES}
 )
 
+# Compare two folder contents
+alicevision_add_software(aliceVision_compareFolders
+  SOURCE main_compareFolders.cpp
+  FOLDER ${FOLDER_SOFTWARE_UTILS}
+  LINKS aliceVision_system
+        aliceVision_cmdline
+        aliceVision_sfmData
+        aliceVision_sfmDataIO
+        Boost::program_options
+        Boost::filesystem
+)
+
 endif() # ALICEVISION_BUILD_MVS
