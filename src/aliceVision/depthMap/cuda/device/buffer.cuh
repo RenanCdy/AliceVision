@@ -98,7 +98,7 @@ template <typename T>
 __device__ inline T sampleTex2DLod(cudaTextureObject_t tex, float x, int width, float y, int height, int level)
 {
     float one_over_width = 1.0f / (float)width;
-    float one_over_height = 1.0f / (float)width;
+    float one_over_height = 1.0f / (float)height;
     if (level == 0)
     {
         float u = (x+0.5)*one_over_width;
