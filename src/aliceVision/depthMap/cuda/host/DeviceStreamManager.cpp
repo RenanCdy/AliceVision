@@ -20,18 +20,18 @@ DeviceStreamManager::DeviceStreamManager(int nbStreams)
 
     for(int i = 0; i < nbStreams; ++i)
     {
-        cudaError_t err = cudaStreamCreate(&_streams.at(i));
+        cudaError_t err = cudaStreamCreate(&_streams.at(i)._cudaStream);
         if(err != cudaSuccess)
         {
             ALICEVISION_LOG_WARNING("DeviceStreamManager: Failed to create a CUDA stream object " << i << "/" << nbStreams << ", " << cudaGetErrorString(err));
-            _streams.at(i) = 0;
+            _streams.at(i)._cudaStream = 0;
         }
     }
 }
 
 DeviceStreamManager::~DeviceStreamManager() 
 {
-    for(cudaStream_t& stream : _streams)
+    for(auto& stream : _streams)
     {
         cudaStreamSynchronize(stream);
 
@@ -42,7 +42,7 @@ DeviceStreamManager::~DeviceStreamManager()
     }
 }
 
-cudaStream_t DeviceStreamManager::getStream(int streamIndex)
+DeviceStreamManager::DeviceStream DeviceStreamManager::getStream(int streamIndex)
 {
     return _streams.at(streamIndex % _nbStreams);
 }

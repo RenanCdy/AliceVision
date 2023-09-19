@@ -12,6 +12,7 @@
 #include <aliceVision/depthMap/Tile.hpp>
 #include <aliceVision/depthMap/RefineParams.hpp>
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/cuda/planeSweeping/similarity.hpp>
 
 #include <vector>
@@ -38,7 +39,7 @@ public:
     Refine(const mvsUtils::MultiViewParams& mp,
            const mvsUtils::TileParams& tileParams,   
            const RefineParams& refineParams, 
-           cudaStream_t stream);
+           DeviceStreamManager::DeviceStream stream);
 
     // no default constructor
     Refine() = delete;
@@ -116,7 +117,7 @@ private:
     CudaDeviceMemoryPitched<TSimRefine, 3> _volumeRefineSim_dmp;   //< rc refine similarity volume
     CudaDeviceMemoryPitched<float, 2> _optTmpDepthMap_dmp;         //< for color optimization: temporary depth map buffer
     CudaDeviceMemoryPitched<float, 2> _optImgVariance_dmp;         //< for color optimization: image variance buffer
-    cudaStream_t _stream;                                          //< stream for gpu execution
+    DeviceStreamManager::DeviceStream _stream;                                   //< stream for gpu execution
 };
 
 } // namespace depthMap

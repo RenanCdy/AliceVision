@@ -25,8 +25,8 @@ Sgm::Sgm(const mvsUtils::MultiViewParams& mp,
          const mvsUtils::TileParams& tileParams, 
          const SgmParams& sgmParams,
          bool computeDepthSimMap,
-         bool computeNormalMap,
-         cudaStream_t stream)
+         bool computeNormalMap, 
+         DeviceStreamManager::DeviceStream stream)
     : _mp(mp)
     , _tileParams(tileParams)
     , _sgmParams(sgmParams)

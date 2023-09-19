@@ -14,6 +14,7 @@
 #include <aliceVision/depthMap/SgmParams.hpp>
 #include <aliceVision/depthMap/SgmDepthList.hpp>
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/cuda/planeSweeping/similarity.hpp>
 
 #include <vector>
@@ -43,8 +44,8 @@ public:
         const mvsUtils::TileParams& tileParams, 
         const SgmParams& sgmParams, 
         bool computeDepthSimMap,
-        bool computeNormalMap,
-        cudaStream_t stream);
+        bool computeNormalMap, 
+        DeviceStreamManager::DeviceStream stream);
 
     // no default constructor
     Sgm() = delete;
@@ -149,7 +150,7 @@ private:
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeSliceAccA_dmp;   //< for optimization: volume accumulation slice A
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeSliceAccB_dmp;   //< for optimization: volume accumulation slice B
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeAxisAcc_dmp;     //< for optimization: volume accumulation axis
-    cudaStream_t _stream;                                       //< stream for gpu execution
+    DeviceStreamManager::DeviceStream _stream;                                //< stream for gpu execution
 };
 
 } // namespace depthMap

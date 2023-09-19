@@ -23,7 +23,7 @@ namespace depthMap {
 Refine::Refine(const mvsUtils::MultiViewParams& mp,
                const mvsUtils::TileParams& tileParams, 
                const RefineParams& refineParams, 
-               cudaStream_t stream)
+               DeviceStreamManager::DeviceStream stream)
     : _mp(mp)
     , _tileParams(tileParams)
     , _refineParams(refineParams)

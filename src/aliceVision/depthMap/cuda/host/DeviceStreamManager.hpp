@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <sycl/sycl.hpp>
 
 #include <vector>
 
@@ -20,6 +21,17 @@ namespace depthMap {
 class DeviceStreamManager
 {
 public:
+
+    class DeviceStream
+    {
+        friend class DeviceStreamManager;
+    public:
+        operator cudaStream_t() const { return _cudaStream; }
+        operator sycl::queue() const { return _syclQueue; }
+    protected:
+        cudaStream_t _cudaStream;
+        sycl::queue _syclQueue = sycl::queue(sycl::cpu_selector_v);
+    };
 
     /**
      * @brief DeviceStreamManager constructor.
@@ -48,7 +60,7 @@ public:
      * @note if streamIndex > nbStream, this function returns the stream object associated with streamIndex % nbStream
      * @return the associated stream object 
      */
-    cudaStream_t getStream(int streamIndex);
+    DeviceStream getStream(int streamIndex);
 
     /**
      * @brief Waits for stream tasks to complete. 
@@ -59,7 +71,7 @@ public:
 private:
 
     const int _nbStreams;
-    std::vector<cudaStream_t> _streams;
+    std::vector<DeviceStream> _streams;
 };
 
 } // namespace depthMap

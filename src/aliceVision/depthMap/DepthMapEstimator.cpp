@@ -83,11 +83,13 @@ int DepthMapEstimator::getNbSimultaneousTiles() const
     double sgmTileCostMB = 0.0;
     double sgmTileCostUnpaddedMB = 0.0;
 
+    DeviceStreamManager deviceStreamManager(1);
+
     {
       const bool sgmComputeDepthSimMap = !_depthMapParams.useRefine;
       const bool sgmComputeNormalMap = _refineParams.useSgmNormalMap;
 
-      Sgm sgm(_mp, _tileParams, _sgmParams, sgmComputeDepthSimMap, sgmComputeNormalMap, 0 /*stream*/);
+      Sgm sgm(_mp, _tileParams, _sgmParams, sgmComputeDepthSimMap, sgmComputeNormalMap, deviceStreamManager.getStream(0));
       sgmTileCostMB = sgm.getDeviceMemoryConsumption();
       sgmTileCostUnpaddedMB = sgm.getDeviceMemoryConsumptionUnpadded();
     }
@@ -98,7 +100,7 @@ int DepthMapEstimator::getNbSimultaneousTiles() const
 
     if(_depthMapParams.useRefine)
     {
-      Refine refine(_mp, _tileParams, _refineParams, 0 /*stream*/);
+      Refine refine(_mp, _tileParams, _refineParams, deviceStreamManager.getStream(0));
       refineTileCostMB = refine.getDeviceMemoryConsumption();
       refineTileCostUnpaddedMB = refine.getDeviceMemoryConsumptionUnpadded();
     }
