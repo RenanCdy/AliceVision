@@ -7,7 +7,7 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include "aliceVision/depthMap/cuda/device/buffer.dpp.hpp"
+#include "aliceVision/depthMap/cuda/device/buffer.dp.hpp"
 
 // for the R camera, image alpha should be at least 0.9f (computation area)
 #define ALICEVISION_DEPTHMAP_RC_MIN_ALPHA (255.f * 0.9f) // texture range (0, 255)

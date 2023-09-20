@@ -65,9 +65,9 @@ set(depthMap_cuda_device_headers
 )
 
 set(depthMap_sycl_headers
-  cuda/device/buffer.dpp.hpp
-  cuda/device/color.dpp.hpp
-  cuda/imageProcessing/deviceColorConversion.hpp
+  cuda/device/buffer.dp.hpp
+  cuda/device/color.dp.hpp
+  cuda/imageProcessing/deviceColorConversion.dp.hpp
 )
 
 # device CUDA Sources
@@ -87,7 +87,7 @@ set(depthMap_cuda_imageProcessing_sources
 )
 
 set(depthMap_sycl_imageProcessing_sources
-  cuda/imageProcessing/deviceColorConversion.cpp
+  cuda/imageProcessing/deviceColorConversion.dp.cpp
 )
 # planeSweeping CUDA Headers Only
 set(depthMap_cuda_planeSweeping_headers

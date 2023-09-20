@@ -7,7 +7,7 @@
 #include "DeviceMipmapImage.hpp"
 
 #include <aliceVision/numeric/numeric.hpp>
-#include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.hpp>
+#include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceMipmappedArray.hpp>
 #include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
