@@ -39,7 +39,7 @@ public:
     Refine(const mvsUtils::MultiViewParams& mp,
            const mvsUtils::TileParams& tileParams,   
            const RefineParams& refineParams, 
-           DeviceStreamManager::DeviceStream stream);
+           DeviceStream stream);
 
     // no default constructor
     Refine() = delete;
@@ -117,7 +117,7 @@ private:
     CudaDeviceMemoryPitched<TSimRefine, 3> _volumeRefineSim_dmp;   //< rc refine similarity volume
     CudaDeviceMemoryPitched<float, 2> _optTmpDepthMap_dmp;         //< for color optimization: temporary depth map buffer
     CudaDeviceMemoryPitched<float, 2> _optImgVariance_dmp;         //< for color optimization: image variance buffer
-    DeviceStreamManager::DeviceStream _stream;                                   //< stream for gpu execution
+    DeviceStream _stream;                                   //< stream for gpu execution
 };
 
 } // namespace depthMap

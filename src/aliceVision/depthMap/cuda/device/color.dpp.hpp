@@ -6,7 +6,9 @@
 
 #pragma once
 
-#include <aliceVision/depthMap/cuda/device/buffer.cuh>
+#include <sycl/sycl.hpp>
+#include "aliceVision/depthMap/cuda/device/buffer.dpp.hpp"
+
 // for the R camera, image alpha should be at least 0.9f (computation area)
 #define ALICEVISION_DEPTHMAP_RC_MIN_ALPHA (255.f * 0.9f) // texture range (0, 255)
 
@@ -24,10 +26,10 @@ namespace depthMap {
  * @param[in] x2 the second pixel color
  * @return distance
  */
-__device__ inline float euclideanDist3(const float3 x1, const float3 x2)
+inline float euclideanDist3(const sycl::float3 x1, const sycl::float3 x2)
 {
     // return sqrtf((x1.x - x2.x) * (x1.x - x2.x) + (x1.y - x2.y) * (x1.y - x2.y) + (x1.z - x2.z) * (x1.z - x2.z));
-    return norm3df(x1.x - x2.x, x1.y - x2.y, x1.z - x2.z);
+    return sycl::length(sycl::float3(x1.x() - x2.x(), x1.y() - x2.y(), x1.z() - x2.z()));
 }
 
 /**
@@ -36,10 +38,10 @@ __device__ inline float euclideanDist3(const float3 x1, const float3 x2)
  * @param[in] x2 the second pixel color
  * @return distance
  */
-__device__ inline float euclideanDist3(const float4 x1, const float4 x2)
+inline float euclideanDist3(const sycl::float4 x1, const sycl::float4 x2)
 {
     // return sqrtf((x1.x - x2.x) * (x1.x - x2.x) + (x1.y - x2.y) * (x1.y - x2.y) + (x1.z - x2.z) * (x1.z - x2.z));
-    return norm3df(x1.x - x2.x, x1.y - x2.y, x1.z - x2.z);
+    return sycl::length(sycl::float3(x1.x() - x2.x(), x1.y() - x2.y(), x1.z() - x2.z()));
 }
 
 // color conversion utils
@@ -49,11 +51,11 @@ __device__ inline float euclideanDist3(const float4 x1, const float4 x2)
  * @param[in] c the float3 sRGB
  * @return float3 linear RGB
  */
-__device__ inline float3 srgb2rgb(const float3 c)
+inline sycl::float3 srgb2rgb(const sycl::float3 c)
 {
-    return make_float3(c.x <= 0.04045f ? c.x / 12.92f : __powf((c.x + 0.055f) / 1.055f, 2.4f),
-                       c.y <= 0.04045f ? c.y / 12.92f : __powf((c.y + 0.055f) / 1.055f, 2.4f),
-                       c.z <= 0.04045f ? c.z / 12.92f : __powf((c.z + 0.055f) / 1.055f, 2.4f));
+    return sycl::float3(c.x() <= 0.04045f ? c.x() / 12.92f : sycl::pow<float>((c.x() + 0.055f) / 1.055f, 2.4f),
+                        c.y() <= 0.04045f ? c.y() / 12.92f : sycl::pow<float>((c.y() + 0.055f) / 1.055f, 2.4f),
+                        c.z() <= 0.04045f ? c.z() / 12.92f : sycl::pow<float>((c.z() + 0.055f) / 1.055f, 2.4f));
 }
 
 /**
@@ -61,11 +63,11 @@ __device__ inline float3 srgb2rgb(const float3 c)
  * @param[in] c the float3 Linear RGB
  * @return float3 XYZ
  */
-__device__ inline float3 rgb2xyz(const float3 c)
+inline sycl::float3 rgb2xyz(const sycl::float3 c)
 {
-    return make_float3(0.4124564f * c.x + 0.3575761f * c.y + 0.1804375f * c.z,
-                       0.2126729f * c.x + 0.7151522f * c.y + 0.0721750f * c.z,
-                       0.0193339f * c.x + 0.1191920f * c.y + 0.9503041f * c.z);
+    return sycl::float3(0.4124564f * c.x() + 0.3575761f * c.y() + 0.1804375f * c.z(),
+                        0.2126729f * c.x() + 0.7151522f * c.y() + 0.0721750f * c.z(),
+                        0.0193339f * c.x() + 0.1191920f * c.y() + 0.9503041f * c.z());
 }
 
 /**
@@ -73,28 +75,28 @@ __device__ inline float3 rgb2xyz(const float3 c)
  * @param[in] c the float3 Linear RGB
  * @return float3 HSL
  */
-__device__ inline float3 rgb2hsl(const float3& c)
+inline sycl::float3 rgb2hsl(const sycl::float3& c)
 {
-    const float cmin = fminf(c.x, fminf(c.y, c.z));
-    const float cmax = fmaxf(c.x, fmaxf(c.y, c.z));
+    const float cmin = sycl::fmin((float)(c.x()), sycl::fmin((float)(c.y()), (float)(c.z())));
+    const float cmax = sycl::fmax((float)(c.x()), sycl::fmax((float)(c.y()), (float)(c.z())));
 
     float h = 0.0f;
     if(cmin == cmax)
     { /* h = 0.0f; */
     }
-    else if(cmax == c.x)
+    else if(cmax == c.x())
     {
-        h = ((c.y - c.z) / (cmax - cmin) + 6.0f) / 6.0f;
+        h = ((c.y() - c.z()) / (cmax - cmin) + 6.0f) / 6.0f;
         if(h >= 1.0f)
             h -= 1.0f;
     }
-    else if(cmax == c.y)
+    else if(cmax == c.y())
     {
-        h = ((c.z - c.x) / (cmax - cmin) + 2.0f) / 6.0f;
+        h = ((c.z() - c.x()) / (cmax - cmin) + 2.0f) / 6.0f;
     }
     else /* if(cmax == c.z) */
     {
-        h = ((c.x - c.y) / (cmax - cmin) + 4.0f) / 6.0f;
+        h = ((c.x() - c.y()) / (cmax - cmin) + 4.0f) / 6.0f;
     }
 
     const float l = 0.5f * (cmin + cmax);
@@ -112,7 +114,7 @@ __device__ inline float3 rgb2hsl(const float3& c)
         s = (cmax - cmin) / (2.0f - 2.0f * l);
     }
 
-    return make_float3(h, s, l);
+    return sycl::float3(h, s, l);
 }
 
 /**
@@ -120,22 +122,23 @@ __device__ inline float3 rgb2hsl(const float3& c)
  * @param[in] c the float3 XYZ
  * @return float3 CIELAB
  */
-__device__ inline float3 xyz2lab(const float3 c)
+inline sycl::float3 xyz2lab(const sycl::float3 c)
 {
     // assuming whitepoint D65, XYZ=(0.95047, 1.00000, 1.08883)
-    float3 r = make_float3(c.x / 0.95047f, c.y, c.z / 1.08883f);
+    sycl::float3 r = sycl::float3(c.x() / 0.95047f, c.y(), c.z() / 1.08883f);
 
-    float3 f = make_float3((r.x > 216.0f / 24389.0f ? cbrtf(r.x) : (24389.0f / 27.0f * r.x + 16.0f) / 116.0f),
-                           (r.y > 216.0f / 24389.0f ? cbrtf(r.y) : (24389.0f / 27.0f * r.y + 16.0f) / 116.0f),
-                           (r.z > 216.0f / 24389.0f ? cbrtf(r.z) : (24389.0f / 27.0f * r.z + 16.0f) / 116.0f));
+    sycl::float3 f =
+        sycl::float3((r.x() > 216.0f / 24389.0f ? sycl::cbrt(r.x()) : (24389.0f / 27.0f * r.x() + 16.0f) / 116.0f),
+                     (r.y() > 216.0f / 24389.0f ? sycl::cbrt(r.y()) : (24389.0f / 27.0f * r.y() + 16.0f) / 116.0f),
+                     (r.z() > 216.0f / 24389.0f ? sycl::cbrt(r.z()) : (24389.0f / 27.0f * r.z() + 16.0f) / 116.0f));
 
-    float3 out = make_float3(116.0f * f.y - 16.0f, 500.0f * (f.x - f.y), 200.0f * (f.y - f.z));
+    sycl::float3 out = sycl::float3(116.0f * f.y() - 16.0f, 500.0f * (f.x() - f.y()), 200.0f * (f.y() - f.z()));
 
     // convert values to fit into 0..255 (could be out-of-range)
     // TODO FACA: use float textures, the values are out-of-range for a and b.
-    out.x = out.x * 2.55f;
-    out.y = out.y * 2.55f;
-    out.z = out.z * 2.55f;
+    out.x() = out.x() * 2.55f;
+    out.y() = out.y() * 2.55f;
+    out.z() = out.z() * 2.55f;
     return out;
 }
 
@@ -144,9 +147,9 @@ __device__ inline float3 xyz2lab(const float3 c)
  * @param[in] c the uchar4 RGB
  * @return float gray
  */
-__device__ inline float rgb2gray(const uchar4 c)
+inline float rgb2gray(const sycl::uchar4 c)
 {
-    return 0.2989f * (float)c.x + 0.5870f * (float)c.y + 0.1140f * (float)c.z;
+    return 0.2989f * (float)c.x() + 0.5870f * (float)c.y() + 0.1140f * (float)c.z();
 }
 
 /**
@@ -163,12 +166,8 @@ __device__ inline float rgb2gray(const uchar4 c)
  * @param[in] invGammaP the inverted strength of grouping by proximity (gammaP: 8 / 4)
  * @return distance value
  */
-__device__ inline float CostYKfromLab(const int dx,
-                                      const int dy,
-                                      const float4 c1,
-                                      const float4 c2,
-                                      const float invGammaC,
-                                      const float invGammaP)
+inline float CostYKfromLab(const int dx, const int dy, const sycl::float4 c1, const sycl::float4 c2,
+                           const float invGammaC, const float invGammaP)
 {
     // const float deltaC = 0; // ignore colour difference
 
@@ -199,13 +198,18 @@ __device__ inline float CostYKfromLab(const int dx,
     // spatial distance to the center of the patch (in pixels)
     // without optimization
     // float deltaP = sqrtf(float(dx * dx + dy * dy));
-    float deltaP = __fsqrt_rn(float(dx * dx + dy * dy));
+    /*
+    DPCT1013:4: The rounding mode could not be specified and the generated code may have different accuracy than the
+    original code. Verify the correctness. SYCL math built-in function rounding mode is aligned with OpenCL C 1.2
+    standard.
+    */
+    float deltaP = sycl::sqrt(float(dx * dx + dy * dy));
 
     deltaP *= invGammaP;
 
     deltaC += deltaP;
 
-    return __expf(-deltaC); // Yoon & Kweon
+    return sycl::exp(-deltaC); // Yoon & Kweon
     // return __expf(-(deltaC * deltaC / (2 * gammaC * gammaC))) * sqrtf(__expf(-(deltaP * deltaP / (2 * gammaP * gammaP)))); // DCB
     // return __expf(-((deltaC * deltaC / 2) * (invGammaC * invGammaC))) * sqrtf(__expf(-(((deltaP * deltaP / 2) * (invGammaP * invGammaP)))); // DCB
 }
@@ -222,12 +226,12 @@ __device__ inline float CostYKfromLab(const int dx,
  * @param[in] invGammaC the inverted strength of grouping by color similarity (gammaC: 5.5 / 105.5)
  * @return distance value
  */
- __device__ inline float CostYKfromLab(const float4 c1, const float4 c2, const float invGammaC)
+ inline float CostYKfromLab(const sycl::float4 c1, const sycl::float4 c2, const float invGammaC)
 {
     // euclidean distance in Lab, assuming linear RGB
     const float deltaC = euclideanDist3(c1, c2);
 
-    return __expf(-(deltaC * invGammaC)); // Yoon & Kweon
+    return sycl::exp(-(deltaC * invGammaC)); // Yoon & Kweon
 }
 
 } // namespace depthMap

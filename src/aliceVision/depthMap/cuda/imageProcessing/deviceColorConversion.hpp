@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <sycl/sycl.hpp>
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
 
 namespace aliceVision {
@@ -16,7 +17,7 @@ namespace depthMap {
  * @param[in, out] inout_img_dmp the input RGB buffer, the output LAB buffer in device memory
  * @param[in] stream the CUDA stream for gpu execution
  */
-extern void cuda_rgb2lab(CudaDeviceMemoryPitched<CudaRGBA, 2>& inout_img_dmp, cudaStream_t stream);
+extern void cuda_rgb2lab(CudaDeviceMemoryPitched<CudaRGBA, 2>& inout_img_dmp, sycl::queue& stream);
 
 } // namespace depthMap
 } // namespace aliceVision

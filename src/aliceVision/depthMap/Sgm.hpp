@@ -45,7 +45,7 @@ public:
         const SgmParams& sgmParams, 
         bool computeDepthSimMap,
         bool computeNormalMap, 
-        DeviceStreamManager::DeviceStream stream);
+        DeviceStream stream);
 
     // no default constructor
     Sgm() = delete;
@@ -150,7 +150,7 @@ private:
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeSliceAccA_dmp;   //< for optimization: volume accumulation slice A
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeSliceAccB_dmp;   //< for optimization: volume accumulation slice B
     CudaDeviceMemoryPitched<TSimAcc, 2> _volumeAxisAcc_dmp;     //< for optimization: volume accumulation axis
-    DeviceStreamManager::DeviceStream _stream;                                //< stream for gpu execution
+    DeviceStream _stream;                                       //< stream for gpu execution
 };
 
 } // namespace depthMap

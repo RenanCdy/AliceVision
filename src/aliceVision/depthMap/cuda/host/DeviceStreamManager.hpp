@@ -14,6 +14,21 @@
 namespace aliceVision {
 namespace depthMap {
 
+class DeviceStreamManager;
+
+class DeviceStream
+{
+    friend class DeviceStreamManager;
+public:
+    operator cudaStream_t() const { return _cudaStream; }
+    operator sycl::queue() const { return _syclQueue; }
+    operator sycl::queue&() { return _syclQueue; }
+    
+protected:
+    cudaStream_t _cudaStream;
+    sycl::queue _syclQueue = sycl::queue(sycl::cpu_selector_v);
+};
+
 /**
  * @class Device stream manager
  * @brief Small class allowing a simple management of gpu streams
@@ -21,18 +36,6 @@ namespace depthMap {
 class DeviceStreamManager
 {
 public:
-
-    class DeviceStream
-    {
-        friend class DeviceStreamManager;
-    public:
-        operator cudaStream_t() const { return _cudaStream; }
-        operator sycl::queue() const { return _syclQueue; }
-    protected:
-        cudaStream_t _cudaStream;
-        sycl::queue _syclQueue = sycl::queue(sycl::cpu_selector_v);
-    };
-
     /**
      * @brief DeviceStreamManager constructor.
      * @param[in] nbStreams the number of gpu streams managed

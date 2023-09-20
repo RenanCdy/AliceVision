@@ -64,6 +64,12 @@ set(depthMap_cuda_device_headers
   cuda/device/SimStat.cuh
 )
 
+set(depthMap_sycl_headers
+  cuda/device/buffer.dpp.hpp
+  cuda/device/color.dpp.hpp
+  cuda/imageProcessing/deviceColorConversion.hpp
+)
+
 # device CUDA Sources
 set(depthMap_cuda_device_sources
   cuda/device/DeviceCameraParams.hpp
@@ -76,12 +82,13 @@ set(depthMap_cuda_device_sources
 set(depthMap_cuda_imageProcessing_sources
   cuda/imageProcessing/deviceGaussianFilter.hpp
   cuda/imageProcessing/deviceGaussianFilter.cu
-  cuda/imageProcessing/deviceColorConversion.hpp
-  cuda/imageProcessing/deviceColorConversion.cu
   cuda/imageProcessing/deviceMipmappedArray.hpp
   cuda/imageProcessing/deviceMipmappedArray.cu
 )
 
+set(depthMap_sycl_imageProcessing_sources
+  cuda/imageProcessing/deviceColorConversion.cpp
+)
 # planeSweeping CUDA Headers Only
 set(depthMap_cuda_planeSweeping_headers
   cuda/planeSweeping/deviceDepthSimilarityMapKernels.cuh
@@ -99,6 +106,7 @@ set(depthMap_cuda_planeSweeping_sources
 
 set_source_files_properties(${depthMap_cuda_host_headers}
 			    ${depthMap_cuda_device_headers} 
+          ${depthMap_sycl_headers}
 			    ${depthMap_cuda_planeSweeping_headers}
 
   PROPERTIES HEADER_FILE_ONLY true
@@ -106,7 +114,7 @@ set_source_files_properties(${depthMap_cuda_host_headers}
 
 source_group("aliceVision_depthMap_cuda_host" FILES ${depthMap_cuda_host_headers} ${depthMap_cuda_host_sources})
 source_group("aliceVision_depthMap_cuda_device" FILES ${depthMap_cuda_device_headers} ${depthMap_cuda_device_sources})
-source_group("aliceVision_depthMap_cuda_imageProcessing" FILES ${depthMap_cuda_imageProcessing_sources})
+source_group("aliceVision_depthMap_cuda_imageProcessing" FILES ${depthMap_cuda_imageProcessing_sources} ${depthMap_sycl_imageProcessing_sources})
 source_group("aliceVision_depthMap_cuda_planeSweeping" FILES ${depthMap_cuda_planeSweeping_headers} ${depthMap_cuda_planeSweeping_sources})
 
 # Cuda Sources
@@ -118,6 +126,9 @@ set(depthMap_cuda_files_sources
   ${depthMap_cuda_imageProcessing_sources}
   ${depthMap_cuda_planeSweeping_headers} 
   ${depthMap_cuda_planeSweeping_sources}
+)
+set(depthMap_sycl_files_sources
+  ${depthMap_sycl_imageProcessing_sources}
 )
 
 # with DCP++ .def file for exporting symbols does not work
@@ -134,6 +145,7 @@ alicevision_add_library(aliceVision_depthMap
     ${depthMap_files_headers}
     ${depthMap_files_sources}
     ${depthMap_cuda_files_sources}
+    ${depthMap_sycl_files_sources}
   PUBLIC_LINKS
     aliceVision_mvsData
     aliceVision_mvsUtils

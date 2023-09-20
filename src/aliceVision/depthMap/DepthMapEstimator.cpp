@@ -317,15 +317,17 @@ void DepthMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
         for(int i = firstTileIndex; i < lastTileIndex; ++i)
         {
             const Tile& tile = tiles.at(i);
+            const int streamIndex = tile.id % nbStreams;
+            auto stream = deviceStreamManager.getStream(streamIndex);
 
             // add Sgm R camera to Device cache
-            deviceCache.addMipmapImage(tile.rc, minMipmapDownscale, maxMipmapDownscale, ic, _mp);
+            deviceCache.addMipmapImage(tile.rc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
             deviceCache.addCameraParams(tile.rc, _sgmParams.scale, _mp);
 
             // add Sgm T cameras to Device cache
             for(const int tc : tile.sgmTCams)
             {
-                deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp);
+                deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
                 deviceCache.addCameraParams(tc, _sgmParams.scale, _mp);
             }
 
@@ -337,7 +339,7 @@ void DepthMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
                 // add Refine T cameras to Device cache
                 for(const int tc : tile.refineTCams)
                 {
-                    deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp);
+                    deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
                     deviceCache.addCameraParams(tc, _refineParams.scale, _mp);
                 }
             }

@@ -221,7 +221,8 @@ void DeviceCache::addMipmapImage(int camId,
                                  int minDownscale,
                                  int maxDownscale,
                                  mvsUtils::ImagesCache<image::Image<image::RGBAfColor>>& imageCache,
-                                 const mvsUtils::MultiViewParams& mp)
+                                 const mvsUtils::MultiViewParams& mp,
+                                 DeviceStream& stream)
 {
     // get current device cache
     SingleDeviceCache& currentDeviceCache = getCurrentDeviceCache();
@@ -275,7 +276,7 @@ void DeviceCache::addMipmapImage(int camId,
     }
 
     DeviceMipmapImage& deviceMipmapImage = *(currentDeviceCache.mipmaps.at(deviceMipmapId));
-    deviceMipmapImage.fill(img_hmh, minDownscale, maxDownscale);
+    deviceMipmapImage.fill(img_hmh, minDownscale, maxDownscale, stream);
 }
 
 void DeviceCache::addCameraParams(int camId, int downscale, const mvsUtils::MultiViewParams& mp)

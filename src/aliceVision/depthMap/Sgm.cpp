@@ -26,7 +26,7 @@ Sgm::Sgm(const mvsUtils::MultiViewParams& mp,
          const SgmParams& sgmParams,
          bool computeDepthSimMap,
          bool computeNormalMap, 
-         DeviceStreamManager::DeviceStream stream)
+         DeviceStream stream)
     : _mp(mp)
     , _tileParams(tileParams)
     , _sgmParams(sgmParams)

@@ -60,7 +60,8 @@ public:
                         int minDownscale,
                         int maxDownscale,
                         mvsUtils::ImagesCache<image::Image<image::RGBAfColor>>& imageCache,
-                        const mvsUtils::MultiViewParams& mp);
+                        const mvsUtils::MultiViewParams& mp,
+                        DeviceStream& stream);
 
     /**
      * @brief Add a camera parameters structure in current gpu device cache.

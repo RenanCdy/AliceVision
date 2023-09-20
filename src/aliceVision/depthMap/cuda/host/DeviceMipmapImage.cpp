@@ -10,6 +10,7 @@
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceMipmappedArray.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 
 namespace aliceVision {
 namespace depthMap {
@@ -24,7 +25,7 @@ DeviceMipmapImage::~DeviceMipmapImage()
     _mipmappedArray.deallocate();
 }
 
-void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, int minDownscale, int maxDownscale)
+void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, int minDownscale, int maxDownscale, DeviceStream& stream)
 {
     // update private members
     _minDownscale = minDownscale;
@@ -72,7 +73,7 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     }
 
     // in-place color conversion into CIELAB
-    cuda_rgb2lab(*img_dmpPtr, 0 /*stream*/);
+    cuda_rgb2lab(*img_dmpPtr, stream);
 
     // wait for color conversion kernel completion
     CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());

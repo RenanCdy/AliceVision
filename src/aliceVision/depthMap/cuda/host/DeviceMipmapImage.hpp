@@ -11,6 +11,8 @@
 namespace aliceVision {
 namespace depthMap {
 
+class DeviceStream;
+
 /**
  * @class Device mipmap image
  * @brief Support class to maintain an image pyramid in gpu memory.
@@ -37,7 +39,7 @@ public:
      * @param[in] minDownscale the first downscale level of the mipmap image (level 0)
      * @param[in] maxDownscale the last downscale level of the mipmap image
      */
-    void fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, int minDownscale, int maxDownscale);
+    void fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, int minDownscale, int maxDownscale, DeviceStream& stream);
 
     /**
      * @brief Get the corresponding mipmap image level of the given downscale

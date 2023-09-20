@@ -42,7 +42,7 @@ DeviceStreamManager::~DeviceStreamManager()
     }
 }
 
-DeviceStreamManager::DeviceStream DeviceStreamManager::getStream(int streamIndex)
+DeviceStream DeviceStreamManager::getStream(int streamIndex)
 {
     return _streams.at(streamIndex % _nbStreams);
 }

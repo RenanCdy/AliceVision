@@ -42,6 +42,18 @@
         throw std::runtime_error(s.str());                                                                             \
     }                                                                                                                  \
 
+#define RETHROW_SYCL_EXCEPTION(e) \
+        fprintf(stderr, "\n\nSYCLError: %s\n", e.what());                                                              \
+        fprintf(stderr, "  file:       %s\n", __FILE__);                                                               \
+        fprintf(stderr, "  function:   %s\n", __FUNCTION__);                                                           \
+        fprintf(stderr, "  line:       %d\n\n", __LINE__);                                                             \
+        std::stringstream s;                                                                                           \
+        s << "\n  CUDA Error: "                                                                                        \
+          << e.what()                                                                                                  \
+          << "\n  file:  " << __FILE__ << "\n  function:   " << __FUNCTION__ << "\n  line:       " << __LINE__         \
+          << "\n";                                                                                                     \
+        throw std::runtime_error(s.str());                                                                             \
+
 namespace aliceVision {
 namespace depthMap {
 
