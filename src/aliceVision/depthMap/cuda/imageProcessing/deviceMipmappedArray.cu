@@ -385,19 +385,11 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
         CHECK_CUDA_RETURN_ERROR(cudaDestroyTextureObject(previousLevel_tex));
         // CHECK_CUDA_RETURN_ERROR(cudaDestroySurfaceObject(currentLevel_surf));
     }
-/*
-    std::stringstream ss;
-    static int s_idx = 0;
-    ss << "mipmap_" << s_idx++ << ".exr";
-    writeDeviceImage(*out_mipmappedArrayPtr, ss.str());
-*/
 }
 
 __global__ void checkMipmapLevel(cudaTextureObject_t tex, 
-                                  const CudaRGBA* buffer,
+                                  CudaRGBA* buffer,
                                   unsigned int buffer_pitch,
-                                  CudaRGBA* diff,
-                                  unsigned int diff_pitch,
                                   unsigned int width,
                                   unsigned int height,
                                   float level)
@@ -409,22 +401,14 @@ __global__ void checkMipmapLevel(cudaTextureObject_t tex,
         return;
     }
 
-    float oneOverWidth  = 1.0f / (float)width;
-    float oneOverHeight = 1.0f / (float)height;
+    float4 texValue = _tex2DLod<float4>(tex, (float)x-10, width, (float)y-10, height, level);
 
-    float4 texValue = _tex2DLod<float4>(tex, (float)x, width, y, height, level);
-    CudaRGBA bufferValue = buffer[y*buffer_pitch + x];
-
-    CudaRGBA diff_value;
-    // diff_value.x = __float2half( abs( (float)bufferValue.x - texValue.x) );
-    // diff_value.y = __float2half( abs( (float)bufferValue.y - texValue.y) );
-    // diff_value.z = __float2half( abs( (float)bufferValue.z - texValue.z) );
-    // diff_value.w = __float2half( abs( (float)bufferValue.w - texValue.w) );
-    diff_value.x = __float2half( texValue.x );
-    diff_value.y = __float2half( texValue.y );
-    diff_value.z = __float2half( texValue.z );
-    diff_value.w = __float2half( texValue.w );
-    diff[y*diff_pitch + x] = diff_value;
+    CudaRGBA value;
+    value.x = __float2half( texValue.x );
+    value.y = __float2half( texValue.y );
+    value.z = __float2half( texValue.z );
+    value.w = __float2half( texValue.w );
+    buffer[y*buffer_pitch + x] = value;
 }
 
 __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappedArray_texPtr,
@@ -450,11 +434,11 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
     memset(&texDescr, 0, sizeof(cudaTextureDesc));
     texDescr.normalizedCoords = 1; // should always be set to 1 for mipmapped array
     texDescr.filterMode = cudaFilterModeLinear;
-    texDescr.mipmapFilterMode = cudaFilterModeLinear;
+    // texDescr.mipmapFilterMode = cudaFilterModeLinear;
     texDescr.addressMode[0] = cudaAddressModeClamp;
     texDescr.addressMode[1] = cudaAddressModeClamp;
     texDescr.addressMode[2] = cudaAddressModeClamp;
-    texDescr.maxMipmapLevelClamp = float(levels - 1);
+    // texDescr.maxMipmapLevelClamp = float(levels - 1);
 #ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
     texDescr.readMode = cudaReadModeNormalizedFloat;
 #else
@@ -467,99 +451,97 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
     const dim3 block(16, 16, 1);
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x(), (in_mipmappedArray.getSize().y()*2)/3);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
 
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 0);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 0);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_0_" << s_idx++ << ".exr";
+        ss << "mipmap_0_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/2, (in_mipmappedArray.getSize().y()*2)/3/2);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
 
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 1);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 1);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_1_" << s_idx++ << ".exr";
+        ss << "mipmap_1_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/2, (in_mipmappedArray.getSize().y()*2)/3/2);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
 
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 1.8);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 1.8);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_1.8_" << s_idx++ << ".exr";
+        ss << "mipmap_1.8_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/4, (in_mipmappedArray.getSize().y()*2)/3/4);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
 
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 2);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 2);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_2_" << s_idx++ << ".exr";
+        ss << "mipmap_2_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/8, (in_mipmappedArray.getSize().y()*2)/3/8);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
 
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 3);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 3);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_3_" << s_idx++ << ".exr";
+        ss << "mipmap_3_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/16, (in_mipmappedArray.getSize().y()*2)/3/16);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff( size );
-
-        std::cout << size.x() << ", " << size.y() << std::endl;
-
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size) );
+        
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
-        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, in_mipmappedArray.getBuffer(), in_mipmappedArray.getPitch() / sizeof(CudaRGBA), diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 4);
+        checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 4);
 
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
         CHECK_CUDA_ERROR();
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_4_" << s_idx++ << ".exr";
+        ss << "mipmap_4_" << s_idx++ << ".png";
         writeDeviceImage(diff, ss.str());
     }
 */

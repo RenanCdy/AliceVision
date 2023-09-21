@@ -97,16 +97,24 @@ __device__ inline float4 tex2D_float4(cudaTextureObject_t rc_tex, float x, float
 template <typename T>
 __device__ inline T sampleTex2DLod(cudaTextureObject_t tex, float x, int width, float y, int height, int level)
 {
-    float one_over_width = 1.0f / (float)width;
-    float one_over_height = 1.0f / (float)height;
     if (level == 0)
     {
-        float u = (x+0.5)*one_over_width;
-        float v = (2*y + 1) / 3 * one_over_height;
-        return tex2D<T>(tex, u, v);
+        float one_over_width = 1.0f / (float)width;
+        float one_over_height = 1.0f / (float)height;
+
+        float u = (x + 0.5f) * one_over_width;
+        float v = (y + 0.5f) * one_over_height;
+        u = (u>=0.f)?( (u<=1.f)?u:1.f ):0.f;
+        v = (v>=0.f)?( (v<=1.f)?v:1.f ):0.f;
+
+        return tex2D<T>(tex, u, v * 2.0f / 3.0f);
     }
     else
     {
+        float one_over_levelScale = 1.0f / (float)(1<<level);
+        float one_over_width = one_over_levelScale / (float)width;
+        float one_over_height = one_over_levelScale / (float)height;
+
         int offset = 0;
         for (int l = level-1; l > 0; --l)
         {
@@ -115,17 +123,19 @@ __device__ inline T sampleTex2DLod(cudaTextureObject_t tex, float x, int width, 
         }
         offset /= sizeof(CudaRGBA);
 
-        float u = (x+0.5+offset)*one_over_width / (1<<level);
-        float v = ((y+0.5)*one_over_height / (1<<level) + 1.0f) * 2.0f / 3.0f;
-        return tex2D<T>(tex, u, v);
+        float u = (x + 0.5f) * one_over_width;
+        float v = (y + 0.5f) * one_over_height;
+        
+        u = (u>=0.f)?( (u<=one_over_levelScale)?u:(one_over_levelScale-0.5f*one_over_width) ):0.f;
+        v = (v>=0.f)?( (v<=one_over_levelScale)?v:(one_over_levelScale-0.5f*one_over_height) ):0.f;
+
+        return tex2D<T>(tex, u + offset * one_over_width, (v + 1.0f) * 2.0f / 3.0f);
     }
 }
 
 template <typename T>
 __device__ inline T _tex2DLod(cudaTextureObject_t tex, float x, int width, float y, int height, float z)
 {
-    // TODO: Handle borders, etc...
-
     int highLevel = (int)floor(z);
     int lowLevel  = ( (float)highLevel == z) ? highLevel : (highLevel+1);
 
