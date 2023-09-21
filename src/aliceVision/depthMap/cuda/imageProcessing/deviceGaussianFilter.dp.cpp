@@ -21,9 +21,16 @@ namespace __sycl {
 /*********************************************************************************
  * global / constant data structures
  *********************************************************************************/
-//std::set<int> d_gaussianArrayInitialized;
-//std::shared_ptr<dpct::constant_memory<int, 1>> d_gaussianArrayOffset;
-//std::shared_ptr<dpct::constant_memory<float, 1>> d_gaussianArray;
+std::set<int> d_gaussianArrayInitialized;
+
+// dpct::constant_memory genrate crash on exit...
+// std::shared_ptr<dpct::constant_memory<int, 1>> d_gaussianArrayOffset;
+// std::shared_ptr<dpct::constant_memory<float, 1>> d_gaussianArray;
+
+// simplest way to replace cuda const memory but currentlt not freed
+int* d_gaussianArrayOffset = nullptr;
+float* d_gaussianArray = nullptr;
+
 
 void cuda_createConstantGaussianArray(sycl::queue& stream, int scales) // float delta, int radius)
 try
@@ -34,52 +41,56 @@ try
     //    d_gaussianArray = std::make_shared<dpct::constant_memory<float, 1>>(MAX_CONSTANT_GAUSS_MEM_SIZE);
     //}
 
-    //int cudaDeviceId = 0;
+    int cudaDeviceId = 0;
 
     //std::string n = stream.get_device().get_info<sycl::info::device::name>();
 
-    //if(scales >= MAX_CONSTANT_GAUSS_SCALES)
-    //{
-    //    throw std::runtime_error(
-    //        "Programming error: too few scales pre-computed for Gaussian kernels. Enlarge and recompile.");
-    //}
+    if(scales >= MAX_CONSTANT_GAUSS_SCALES)
+    {
+        throw std::runtime_error(
+            "Programming error: too few scales pre-computed for Gaussian kernels. Enlarge and recompile.");
+    }
 
-    //if(d_gaussianArrayInitialized.find(cudaDeviceId) != d_gaussianArrayInitialized.end())
-    //    return;
-    //d_gaussianArrayInitialized.insert(cudaDeviceId);
+    if(d_gaussianArrayInitialized.find(cudaDeviceId) != d_gaussianArrayInitialized.end())
+        return;
+    d_gaussianArrayInitialized.insert(cudaDeviceId);
 
-    //int* h_gaussianArrayOffset;
-    //float* h_gaussianArray;
+    int* h_gaussianArrayOffset;
+    float* h_gaussianArray;
 
-    //h_gaussianArrayOffset = sycl::malloc_shared<int>(MAX_CONSTANT_GAUSS_SCALES, stream);
-    //h_gaussianArray = sycl::malloc_shared<float>(MAX_CONSTANT_GAUSS_MEM_SIZE, stream);
+    h_gaussianArrayOffset = sycl::malloc_shared<int>(MAX_CONSTANT_GAUSS_SCALES, stream);
+    h_gaussianArray = sycl::malloc_shared<float>(MAX_CONSTANT_GAUSS_MEM_SIZE, stream);
 
-    //int sumSizes = 0;
+    int sumSizes = 0;
 
-    //for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
-    //{
-    //    h_gaussianArrayOffset[scale] = sumSizes;
-    //    const int radius = scale + 1;
-    //    const int size = 2 * radius + 1;
-    //    sumSizes += size;
-    //}
+    for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
+    {
+        h_gaussianArrayOffset[scale] = sumSizes;
+        const int radius = scale + 1;
+        const int size = 2 * radius + 1;
+        sumSizes += size;
+    }
 
-    //for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
-    //{
-    //    const int radius = scale + 1;
-    //    const float delta = 1.0f;
-    //    const int size = 2 * radius + 1;
+    for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
+    {
+        const int radius = scale + 1;
+        const float delta = 1.0f;
+        const int size = 2 * radius + 1;
 
-    //    for(int idx = 0; idx < size; idx++)
-    //    {
-    //        int x = idx - radius;
-    //        h_gaussianArray[h_gaussianArrayOffset[scale] + idx] = expf(-(x * x) / (2 * delta * delta));
-    //    }
-    //}
+        for(int idx = 0; idx < size; idx++)
+        {
+            int x = idx - radius;
+            h_gaussianArray[h_gaussianArrayOffset[scale] + idx] = expf(-(x * x) / (2 * delta * delta));
+        }
+    }
 
-    //stream.memcpy(d_gaussianArrayOffset.get_ptr(), h_gaussianArrayOffset, MAX_CONSTANT_GAUSS_SCALES * sizeof(int));
-    //stream.memcpy(d_gaussianArray.get_ptr(), h_gaussianArray, sumSizes * sizeof(float));
-    //stream.wait();
+    d_gaussianArrayOffset = h_gaussianArrayOffset;
+    d_gaussianArray = h_gaussianArray;
+
+    //d_gaussianArrayOffset->init(stream);
+    //d_gaussianArray->init(stream);
+    //stream.memcpy(d_gaussianArrayOffset->get_ptr(stream), h_gaussianArrayOffset, MAX_CONSTANT_GAUSS_SCALES * sizeof(int)).wait();
+    //stream.memcpy(d_gaussianArray->get_ptr(stream), h_gaussianArray, sumSizes * sizeof(float)).wait();
 
     //sycl::free(h_gaussianArrayOffset, stream);
     //sycl::free(h_gaussianArray, stream);
@@ -149,47 +160,15 @@ try
                               divUp(out_downscaledImg_dmp.getSize().x(), block[2])
                             );
 
-
-    int* h_gaussianArrayOffset;
-    float* h_gaussianArray;
-
-    h_gaussianArrayOffset = sycl::malloc_shared<int>(MAX_CONSTANT_GAUSS_SCALES, stream);
-    h_gaussianArray = sycl::malloc_shared<float>(MAX_CONSTANT_GAUSS_MEM_SIZE, stream);
-
-    int sumSizes = 0;
-
-    for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
-    {
-        h_gaussianArrayOffset[scale] = sumSizes;
-        const int radius = scale + 1;
-        const int size = 2 * radius + 1;
-        sumSizes += size;
-    }
-
-    for(int scale = 0; scale < MAX_CONSTANT_GAUSS_SCALES; ++scale)
-    {
-        const int radius = scale + 1;
-        const float delta = 1.0f;
-        const int size = 2 * radius + 1;
-
-        for(int idx = 0; idx < size; idx++)
-        {
-            int x = idx - radius;
-            h_gaussianArray[h_gaussianArrayOffset[scale] + idx] = expf(-(x * x) / (2 * delta * delta));
-        }
-    }
-
     stream.submit(
         [&](sycl::handler& cgh)
         {
-            //__sycl::d_gaussianArrayOffset.init(stream);
-            //__sycl::d_gaussianArray.init(stream);
 
-            //auto d_gaussianArrayOffset_ptr = __sycl::d_gaussianArrayOffset.get_ptr();
-            //auto d_gaussianArray_ptr = __sycl::d_gaussianArray.get_ptr();
-            // 
-            auto d_gaussianArrayOffset_ptr = h_gaussianArrayOffset;
-            auto d_gaussianArray_ptr = h_gaussianArray;
+            //auto d_gaussianArrayOffset_ptr = __sycl::d_gaussianArrayOffset->get_ptr(stream);
+            //auto d_gaussianArray_ptr = __sycl::d_gaussianArray->get_ptr(stream);
+            
+            auto d_gaussianArrayOffset_ptr = __sycl::d_gaussianArrayOffset;
+            auto d_gaussianArray_ptr = __sycl::d_gaussianArray;
 
             sycl::accessor in_acc = in.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
             sycl::sampler sampler(sycl::coordinate_normalization_mode::unnormalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
@@ -212,9 +191,6 @@ try
         });
 
     stream.wait();
-
-    sycl::free(h_gaussianArrayOffset, stream);
-    sycl::free(h_gaussianArray, stream);
 
 }
 catch(sycl::exception const& e)

@@ -22,9 +22,6 @@ namespace __sycl {
 /*********************************************************************************
  * global / constant data structures
  *********************************************************************************/
-//extern std::set<int> d_gaussianArrayInitialized;
-//extern dpct::constant_memory<int, 1> d_gaussianArrayOffset;
-//extern dpct::constant_memory<float, 1> d_gaussianArray;
 
 inline float getGauss(int scale, int idx, int* d_gaussianArrayOffset, float* d_gaussianArray)
 {
