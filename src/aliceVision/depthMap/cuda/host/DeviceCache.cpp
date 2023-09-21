@@ -10,6 +10,7 @@
 #include <aliceVision/depthMap/cuda/host/utils.hpp>
 #include <aliceVision/depthMap/cuda/device/DeviceCameraParams.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
+#include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.dp.hpp>
 
 // maximum pre-computed Gaussian scales
 #define DEVICE_MAX_DOWNSCALE  ( MAX_CONSTANT_GAUSS_SCALES - 1 )
@@ -148,7 +149,7 @@ void fillDeviceCameraParameters(const DeviceCameraParams& cameraParameters_h, in
     THROW_ON_CUDA_ERROR(err, "Failed to copy camera parameters from host to device.");
 }
 
-DeviceCache::SingleDeviceCache::SingleDeviceCache(int maxMipmapImages, int maxCameraParams)
+DeviceCache::SingleDeviceCache::SingleDeviceCache(int maxMipmapImages, int maxCameraParams, sycl::queue& stream)
     : mipmapCache(maxMipmapImages)
     , cameraParamCache(maxCameraParams)
 {
@@ -163,6 +164,7 @@ DeviceCache::SingleDeviceCache::SingleDeviceCache(int maxMipmapImages, int maxCa
     // force at compilation to build with maximum pre-computed Gaussian scales
     // note: useful for downscale with gaussian blur, volume gaussian blur (Z, XYZ)
     cuda_createConstantGaussianArray(cudaDeviceId, DEVICE_MAX_DOWNSCALE);
+    __sycl::cuda_createConstantGaussianArray(stream, DEVICE_MAX_DOWNSCALE);
 
     // the maximum number of camera parameters in device cache cannot be superior
     // to the number of camera parameters in the array in device constant memory
@@ -190,13 +192,13 @@ void DeviceCache::clear()
         _cachePerDevice.erase(it);
 }
 
-void DeviceCache::build(int maxMipmapImages, int maxCameraParams)
+void DeviceCache::build(int maxMipmapImages, int maxCameraParams, sycl::queue &stream)
 {
     // get the current device id
     const int cudaDeviceId = getCudaDeviceId();
 
     // reset the current device cache
-    _cachePerDevice[cudaDeviceId].reset(new SingleDeviceCache(maxMipmapImages, maxCameraParams));
+    _cachePerDevice[cudaDeviceId].reset(new SingleDeviceCache(maxMipmapImages, maxCameraParams, stream));
 }
 
 DeviceCache::SingleDeviceCache& DeviceCache::getCurrentDeviceCache()

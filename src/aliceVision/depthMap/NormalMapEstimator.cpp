@@ -13,6 +13,7 @@
 #include <aliceVision/depthMap/depthMapUtils.hpp>
 #include <aliceVision/depthMap/cuda/host/utils.hpp>
 #include <aliceVision/depthMap/cuda/host/DeviceCache.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/cuda/planeSweeping/deviceDepthSimilarityMap.hpp>
 
 #include <boost/filesystem.hpp>
@@ -32,8 +33,10 @@ void NormalMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
     // the CUDA runtime API is thread-safe, it maintains per-thread state about the current device 
     setCudaDeviceId(cudaDeviceId);
 
+    DeviceStreamManager deviceStreamManager(1);
+
     DeviceCache& deviceCache = DeviceCache::getInstance();
-    deviceCache.build(0, 1); // 0 mipmap image, 1 camera parameters
+    deviceCache.build(0, 1, deviceStreamManager.getStream(0)); // 0 mipmap image, 1 camera parameters
 
     for(const int rc : cams)
     {

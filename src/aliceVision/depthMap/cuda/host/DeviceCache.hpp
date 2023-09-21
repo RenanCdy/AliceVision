@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <sycl/sycl.hpp>
 
 #include <aliceVision/mvsUtils/MultiViewParams.hpp>
 #include <aliceVision/mvsUtils/ImagesCache.hpp>
@@ -46,7 +47,7 @@ public:
      * @param[in] maxMipmapImages the maximum number of mipmap images in the current device cache
      * @param[in] maxCameraParams the maximum number of camera parameters in the current device cache
      */
-    void build(int maxMipmapImages, int maxCameraParams);
+    void build(int maxMipmapImages, int maxCameraParams, sycl::queue& stream);
 
     /**
      * @brief Add a mipmap image in current gpu device cache.
@@ -99,7 +100,7 @@ private:
      */
     struct SingleDeviceCache
     {
-        SingleDeviceCache(int maxMipmapImages, int maxCameraParams);
+        SingleDeviceCache(int maxMipmapImages, int maxCameraParams, sycl::queue& stream);
         ~SingleDeviceCache() = default;
 
         // caches Least Recently Used

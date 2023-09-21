@@ -35,12 +35,21 @@ namespace depthMap {
         return rgb;                 
     }
 
-    template <typename T, int Dims>
-    inline void store_half4(const sycl::float3& rgb, const sycl::accessor<T, Dims>& accessor, size_t x, size_t y)
+    template <typename T, int Dims, sycl::access::mode Mode>
+    inline void store_half4(const sycl::float3& rgb, const sycl::accessor<T, Dims, Mode>& accessor, size_t x, size_t y)
     {
         accessor[y][x].x() = sycl::detail::float2Half(rgb[0]);
         accessor[y][x].y() = sycl::detail::float2Half(rgb[1]);
         accessor[y][x].z() = sycl::detail::float2Half(rgb[2]);
+    }
+
+    template <typename T, int Dims, sycl::access::mode Mode>
+    inline void store_half4(const sycl::float4& rgba, const sycl::accessor<T, Dims, Mode>& accessor, size_t x, size_t y)
+    {
+        accessor[y][x].x() = sycl::detail::float2Half(rgba[0]);
+        accessor[y][x].y() = sycl::detail::float2Half(rgba[1]);
+        accessor[y][x].z() = sycl::detail::float2Half(rgba[2]);
+        accessor[y][x].w() = sycl::detail::float2Half(rgba[3]);
     }
 
 } // namespace depthMap

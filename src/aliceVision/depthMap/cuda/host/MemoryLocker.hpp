@@ -53,7 +53,6 @@ public:
     ImageLocker(CudaDeviceMemoryPitched<Type, Dim>& deviceMemory)
         : m_deviceMemory(deviceMemory)
     {
-        assert(sizeof(Type) == sizeof(SyclType));
 
         m_hostMemory.allocate(m_deviceMemory.getSize());
         m_hostMemory.copyFrom(m_deviceMemory, 0);

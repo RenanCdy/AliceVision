@@ -38,46 +38,6 @@ __device__ void cuda_swap_float(float& a, float& b)
  * kernel definitions
  *********************************************************************************/
 
-/*
- * @note This kernel implementation is not optimized because the Gaussian filter is separable.
- */
-__global__ void downscaleWithGaussianBlur_kernel(cudaTextureObject_t in_img_tex,
-                                                 CudaRGBA* out_downscaledImg_d, int out_downscaledImg_p,
-                                                 unsigned int downscaledImgWidth,
-                                                 unsigned int downscaledImgHeight,
-                                                 int downscale, 
-                                                 int gaussRadius)
-{
-    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if((x < downscaledImgWidth) && (y < downscaledImgHeight))
-    {
-        const float s = float(downscale) * 0.5f;
-
-        float4 accPix = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-        float sumFactor = 0.0f;
-
-        for(int i = -gaussRadius; i <= gaussRadius; i++)
-        {
-            for(int j = -gaussRadius; j <= gaussRadius; j++)
-            {
-                const float4 curPix = tex2D_float4(in_img_tex, float(x * downscale + j) + s, float(y * downscale + i) + s);
-                const float factor = getGauss(downscale - 1, i + gaussRadius) *
-                                     getGauss(downscale - 1, j + gaussRadius); // domain factor
-
-                accPix = accPix + curPix * factor;
-                sumFactor += factor;
-            }
-        }
-
-        CudaRGBA& out = BufPtr<CudaRGBA>(out_downscaledImg_d, out_downscaledImg_p).at(size_t(x), size_t(y));
-        out.x = accPix.x / sumFactor;
-        out.y = accPix.y / sumFactor;
-        out.z = accPix.z / sumFactor;
-        out.w = accPix.w / sumFactor;
-    }
-}
 
 __global__ void gaussianBlurVolumeZ_kernel(float* out_volume_d, int out_volume_s, int out_volume_p, 
                                            const float* in_volume_d, int in_volume_s, int in_volume_p, 
@@ -263,27 +223,6 @@ __host__ void cuda_createConstantGaussianArray(int cudaDeviceId, int scales) // 
 
     cudaFreeHost(h_gaussianArrayOffset);
     cudaFreeHost(h_gaussianArray);
-}
-
-__host__ void cuda_downscaleWithGaussianBlur(CudaDeviceMemoryPitched<CudaRGBA, 2>& out_downscaledImg_dmp,
-                                             cudaTextureObject_t in_img_tex,
-                                             int downscale, 
-                                             int gaussRadius,
-                                             cudaStream_t stream)
-{
-    const dim3 block(32, 2, 1);
-    const dim3 grid(divUp(out_downscaledImg_dmp.getSize().x(), block.x), divUp(out_downscaledImg_dmp.getSize().y(), block.y), 1);
-
-    downscaleWithGaussianBlur_kernel<<<grid, block, 0, stream>>>(
-          in_img_tex,
-          out_downscaledImg_dmp.getBuffer(),
-          out_downscaledImg_dmp.getPitch(),
-          (unsigned int)(out_downscaledImg_dmp.getSize().x()),
-          (unsigned int)(out_downscaledImg_dmp.getSize().y()),
-          downscale,
-          gaussRadius);
-
-    CHECK_CUDA_ERROR();
 }
 
 __host__ void cuda_gaussianBlurVolumeZ(CudaDeviceMemoryPitched<float, 3>& inout_volume_dmp, int gaussRadius, cudaStream_t stream)

@@ -9,6 +9,7 @@
 #include <aliceVision/numeric/numeric.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
+#include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceMipmappedArray.hpp>
 #include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 
@@ -50,8 +51,6 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     // downscale device-sided full-size input image buffer to min downscale
     if(minDownscale > 1)
     {
-        // create full-size input image buffer texture
-        CudaRGBATexture fullSizeImg(*img_dmpPtr);
 
         // create downscaled image buffer
         const size_t downscaledWidth  = size_t(divideRoundUp(int(_width),  int(minDownscale)));
@@ -60,7 +59,7 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
 
         // downscale with gaussian blur the full-size image texture
         const int gaussianFilterRadius = minDownscale;
-        cuda_downscaleWithGaussianBlur(*downscaledImg_dmpPtr, fullSizeImg.textureObj, minDownscale, gaussianFilterRadius, 0 /*stream*/);
+        cuda_downscaleWithGaussianBlur(*downscaledImg_dmpPtr, *img_dmpPtr, minDownscale, gaussianFilterRadius, stream);
 
         // wait for downscale kernel completion
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());

@@ -37,20 +37,6 @@ __device__ inline float getGauss(int scale, int idx)
 extern void cuda_createConstantGaussianArray(int cudaDeviceId, int scales);
 
 /**
- * @brief Downscale with Gaussian blur the given frame.
- * @param[out] out_downscaledImg_dmp the downscaled image in device memory
- * @param[in] in_img_tex the cuda texture object of the input full size image
- * @param[in] downscale the downscale factor to apply
- * @param[in] gaussRadius the Gaussian radius
- * @param[in] stream the CUDA stream for gpu execution
- */
-extern void cuda_downscaleWithGaussianBlur(CudaDeviceMemoryPitched<CudaRGBA, 2>& out_downscaledImg_dmp,
-                                           cudaTextureObject_t in_img_tex,
-                                           int downscale,
-                                           int gaussRadius,
-                                           cudaStream_t stream);
-
-/**
  * @brief Apply a Gaussion blur to the Z axis of the given volume.
  * @param[in,out] inout_volume_dmp the input/output volume in device memory
  * @param[in] gaussRadius the Gaussian radius
