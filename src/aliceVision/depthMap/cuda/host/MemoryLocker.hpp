@@ -23,9 +23,9 @@ public:
 
         m_hostMemory.allocate(m_deviceMemory.getSize());
         m_hostMemory.copyFrom(m_deviceMemory, 0);
-        m_range = std::make_shared<sycl::range<Dim>>(m_hostMemory.getSize().y(), m_hostMemory.getSize().x());
+        m_range = std::make_shared<sycl::range<Dim>>( make_range<Dim>(m_hostMemory) );
         assert(m_hostMemory.getPitch() % sizeof(Type) == 0);
-        sycl::range<Dim> bufferRange(m_hostMemory.getSize().y(), m_hostMemory.getPitch() / sizeof(Type));
+        sycl::range<Dim> bufferRange = make_buffer_range<Dim>(m_hostMemory);
         m_buffer = std::make_shared<sycl::buffer<SyclType, Dim>>(
             reinterpret_cast<SyclType*>(m_hostMemory.getBytePtr()), bufferRange);
         
@@ -36,10 +36,37 @@ public:
         m_deviceMemory.copyFrom(m_hostMemory, 0);
     }
 
+
     sycl::range<Dim>& range() { return *m_range; }
     sycl::buffer<SyclType, Dim>& buffer() { return *m_buffer; }
 
 private:
+    template <int D>
+    sycl::range<D> make_range(const CudaHostMemoryHeap<Type, D>& hostMemory) {}
+
+    template <>
+    sycl::range<2> make_range<2>(const CudaHostMemoryHeap<Type, 2>& hostMemory) {
+        return sycl::range<2>(hostMemory.getSize().y(), hostMemory.getSize().x());
+    }
+
+    template <>
+    sycl::range<3> make_range<3>(const CudaHostMemoryHeap<Type, 3>& hostMemory) {
+        return sycl::range<3>(hostMemory.getSize().z(), hostMemory.getSize().y(), hostMemory.getSize().x());
+    }
+
+    template <int D>
+    sycl::range<D> make_buffer_range(const CudaHostMemoryHeap<Type, D>& hostMemory) {}
+
+    template <>
+    sycl::range<2> make_buffer_range<2>(const CudaHostMemoryHeap<Type, 2>& hostMemory) {
+        return sycl::range<2>(hostMemory.getSize().y(), hostMemory.getPitch() / sizeof(Type));
+    }
+
+    template <>
+    sycl::range<3> make_buffer_range<3>(const CudaHostMemoryHeap<Type, 3>& hostMemory) {
+        return sycl::range<3>(hostMemory.getSize().z(), hostMemory.getSize().y(), hostMemory.getPitch() / sizeof(Type));
+    }
+
     CudaDeviceMemoryPitched<Type, Dim>& m_deviceMemory;
     CudaHostMemoryHeap<Type, Dim> m_hostMemory;
     std::shared_ptr<sycl::range<Dim>> m_range;

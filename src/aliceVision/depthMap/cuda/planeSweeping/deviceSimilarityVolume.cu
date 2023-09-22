@@ -54,50 +54,6 @@ __host__ dim3 getMaxPotentialBlockSize(T kernelFuction)
     return defaultBlock;
 }
 
-__host__ void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSim, 3>& inout_volume_dmp, TSim value, cudaStream_t stream)
-{
-    // get input/output volume dimensions
-    const CudaSize<3>& volDim = inout_volume_dmp.getSize();
-
-    // kernel launch parameters
-    const dim3 block(32, 4, 1);
-    const dim3 grid(divUp(volDim.x(), block.x), divUp(volDim.y(), block.y), volDim.z());
-
-    // kernel execution
-    volume_init_kernel<TSim><<<grid, block, 0, stream>>>(
-        inout_volume_dmp.getBuffer(),
-        inout_volume_dmp.getBytesPaddedUpToDim(1),
-        inout_volume_dmp.getBytesPaddedUpToDim(0), 
-        (unsigned int)(volDim.x()),
-        (unsigned int)(volDim.y()),
-        value);
-
-    // check cuda last error
-    CHECK_CUDA_ERROR();
-}
-
-__host__ void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, TSimRefine value, cudaStream_t stream)
-{
-    // get input/output volume dimensions
-    const CudaSize<3>& volDim = inout_volume_dmp.getSize();
-
-    // kernel launch parameters
-    const dim3 block(32, 4, 1);
-    const dim3 grid(divUp(volDim.x(), block.x), divUp(volDim.y(), block.y), volDim.z());
-
-    // kernel execution
-    volume_init_kernel<TSimRefine><<<grid, block, 0, stream>>>(
-        inout_volume_dmp.getBuffer(),
-        inout_volume_dmp.getBytesPaddedUpToDim(1),
-        inout_volume_dmp.getBytesPaddedUpToDim(0), 
-        (unsigned int)(volDim.x()),
-        (unsigned int)(volDim.y()),
-        value);
-
-    // check cuda last error
-    CHECK_CUDA_ERROR();
-}
-
 __host__ void cuda_volumeAdd(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, 
                              const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volume_dmp, 
                              cudaStream_t stream)

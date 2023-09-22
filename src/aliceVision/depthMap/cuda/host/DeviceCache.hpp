@@ -71,7 +71,7 @@ public:
      * @param[in,out] imageCache the image cache to get host-side data
      * @param[in] mp the multi-view parameters
      */
-    void addCameraParams(int camId, int downscale, const mvsUtils::MultiViewParams& mp);
+    void addCameraParams(int camId, int downscale, const mvsUtils::MultiViewParams& mp, DeviceStream& stream);
 
     /**
      * @brief Request a mipmap image in current gpu device cache.

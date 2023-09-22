@@ -45,22 +45,6 @@ inline __device__ float depthPlaneToDepth(const DeviceCameraParams& deviceCamPar
     return size(deviceCamParams.C - p);
 }
 
-template <typename T>
-__global__ void volume_init_kernel(T* inout_volume_d, int inout_volume_s, int inout_volume_p,
-                                   const unsigned int volDimX,
-                                   const unsigned int volDimY,
-                                   const T value)
-{
-    const unsigned int vx = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int vy = blockIdx.y * blockDim.y + threadIdx.y;
-    const unsigned int vz = blockIdx.z;
-
-    if(vx >= volDimX || vy >= volDimY)
-        return;
-
-    *get3DBufferAt(inout_volume_d, inout_volume_s, inout_volume_p, vx, vy, vz) = value;
-}
-
 __global__ void volume_add_kernel(TSimRefine* inout_volume_d, int inout_volume_s, int inout_volume_p, 
                                   const TSimRefine* in_volume_d, const int in_volume_s, const int in_volume_p,
                                   const unsigned int volDimX,

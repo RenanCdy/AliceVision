@@ -20,10 +20,26 @@ namespace depthMap {
     * @return
     */
     template <typename T, int Dims>
-    inline T get2DBufferAt(const sycl::accessor<T, Dims>& accessor,size_t x, size_t y)
+    inline T& get2DBufferAt(const sycl::accessor<T, Dims>& accessor,size_t x, size_t y)
     {
         return accessor[y][x];
         // return &(BufPtr<T>(ptr,pitch).at(x,y));
+    }
+
+    /**
+    * @brief
+    * @param[int] ptr
+    * @param[int] spitch raw length of a 2D array in bytes
+    * @param[int] pitch raw length of a line in bytes
+    * @param[int] x
+    * @param[int] y
+    * @return
+    */
+    template <typename Accessor>
+    inline typename Accessor::value_type& get3DBufferAt(Accessor& accessor, size_t x, size_t y, size_t z)
+    {
+        return accessor[z][y][x];
+        // return ((T*)(((char*)ptr) + z * spitch + y * pitch)) + x;
     }
 
     inline sycl::float3 make_float3(const sycl::ushort4& us)

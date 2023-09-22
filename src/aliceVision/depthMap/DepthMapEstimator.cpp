@@ -322,25 +322,25 @@ void DepthMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
 
             // add Sgm R camera to Device cache
             deviceCache.addMipmapImage(tile.rc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
-            deviceCache.addCameraParams(tile.rc, _sgmParams.scale, _mp);
+            deviceCache.addCameraParams(tile.rc, _sgmParams.scale, _mp, stream);
 
             // add Sgm T cameras to Device cache
             for(const int tc : tile.sgmTCams)
             {
                 deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
-                deviceCache.addCameraParams(tc, _sgmParams.scale, _mp);
+                deviceCache.addCameraParams(tc, _sgmParams.scale, _mp, stream);
             }
 
             if(_depthMapParams.useRefine)
             {
                 // add Refine R camera to Device cache
-                deviceCache.addCameraParams(tile.rc, _refineParams.scale, _mp);
+                deviceCache.addCameraParams(tile.rc, _refineParams.scale, _mp, stream);
 
                 // add Refine T cameras to Device cache
                 for(const int tc : tile.refineTCams)
                 {
                     deviceCache.addMipmapImage(tc, minMipmapDownscale, maxMipmapDownscale, ic, _mp, stream);
-                    deviceCache.addCameraParams(tc, _refineParams.scale, _mp);
+                    deviceCache.addCameraParams(tc, _refineParams.scale, _mp, stream);
                 }
             }
 
@@ -348,7 +348,7 @@ void DepthMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
             {
                 // add SGM R camera at scale 1 to Device cache.
                 // R camera parameters at scale 1 are required for SGM retrieve best depth
-                deviceCache.addCameraParams(tile.rc, 1, _mp);
+                deviceCache.addCameraParams(tile.rc, 1, _mp, stream);
             }
         }
 
