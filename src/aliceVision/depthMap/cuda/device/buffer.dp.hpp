@@ -28,11 +28,21 @@ namespace depthMap {
 
     inline sycl::float3 make_float3(const sycl::ushort4& us)
     {
-        sycl::float3 rgb;
-        rgb[0] = sycl::detail::half2Float(us[0]);
-        rgb[1] = sycl::detail::half2Float(us[1]);
-        rgb[2] = sycl::detail::half2Float(us[2]);
-        return rgb;                 
+        sycl::float3 value;
+        value[0] = sycl::detail::half2Float(us[0]);
+        value[1] = sycl::detail::half2Float(us[1]);
+        value[2] = sycl::detail::half2Float(us[2]);
+        return value;                 
+    }
+
+    inline sycl::float4 make_float4(const sycl::ushort4& us)
+    {
+        sycl::float4 value;
+        value[0] = sycl::detail::half2Float(us[0]);
+        value[1] = sycl::detail::half2Float(us[1]);
+        value[2] = sycl::detail::half2Float(us[2]);
+        value[3] = sycl::detail::half2Float(us[3]);
+        return value;                 
     }
 
     template <typename T, int Dims, sycl::access::mode Mode>
