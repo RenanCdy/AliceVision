@@ -12,6 +12,7 @@
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceMipmappedArray.hpp>
 #include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
+#include <aliceVision/depthMap/depthMapUtils.hpp>
 
 namespace aliceVision {
 namespace depthMap {
@@ -78,7 +79,12 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
 
     // create CUDA mipmapped array from device-sided input image buffer
-    cuda_createMipmappedArrayFromImage(&_mipmappedArray, *img_dmpPtr, _levels);
+    cuda_createMipmappedArrayFromImage(&_mipmappedArray, *img_dmpPtr, _levels, stream);
+
+    static int index = 0;
+    std::stringstream ss;
+    ss << "mipmpap_" << index++ << ".png";
+    writeDeviceImage(_mipmappedArray, ss.str());
 
     // create CUDA mipmapped array texture object with normalized coordinates
     cuda_createMipmappedArrayTexture(&_textureObject, _mipmappedArray, _levels);

@@ -19,6 +19,9 @@ namespace __sycl {
 #define MAX_CONSTANT_GAUSS_SCALES 10
 #define MAX_CONSTANT_GAUSS_MEM_SIZE 128
 
+extern int* d_gaussianArrayOffset;
+extern float* d_gaussianArray;
+
 /*********************************************************************************
  * global / constant data structures
  *********************************************************************************/

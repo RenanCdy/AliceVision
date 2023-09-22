@@ -90,6 +90,7 @@ set(depthMap_cuda_imageProcessing_sources
 set(depthMap_sycl_imageProcessing_sources
   cuda/imageProcessing/deviceColorConversion.dp.cpp
   cuda/imageProcessing/deviceGaussianFilter.dp.cpp
+  cuda/imageProcessing/deviceMipmappedArray.dp.cpp
 )
 # planeSweeping CUDA Headers Only
 set(depthMap_cuda_planeSweeping_headers

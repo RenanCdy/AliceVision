@@ -8,6 +8,8 @@
 
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
 
+namespace sycl { inline namespace _V1 { class queue; } }
+
 namespace aliceVision {
 namespace depthMap {
 
@@ -19,7 +21,8 @@ namespace depthMap {
  */
 extern void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipmappedArrayPtr,
                                                const CudaDeviceMemoryPitched<CudaRGBA, 2>& in_img_dmp,
-                                               const unsigned int levels);
+                                               const unsigned int levels,
+                                               sycl::_V1::queue& stream);
 
 /**
  * @brief Create CUDA mipmapped array texture object.

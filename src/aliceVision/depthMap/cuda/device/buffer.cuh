@@ -119,7 +119,7 @@ __device__ inline T sampleTex2DLod(cudaTextureObject_t tex, float x, int width, 
         for (int l = level-1; l > 0; --l)
         {
             offset += (1<<l) * width * sizeof(CudaRGBA);
-            offset = ((offset + 512-1)/512)*512;
+            // offset = ((offset + 512-1)/512)*512;
         }
         offset /= sizeof(CudaRGBA);
 
