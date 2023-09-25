@@ -8,7 +8,9 @@
 
 #include <aliceVision/system/Logger.hpp>
 #include <aliceVision/depthMap/cuda/host/utils.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/cuda/device/DeviceCameraParams.hpp>
+#include <aliceVision/depthMap/cuda/device/DeviceCameraParams.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.dp.hpp>
 
@@ -141,12 +143,25 @@ void fillHostCameraParameters(DeviceCameraParams& cameraParameters_h, int camId,
   * @param[in] cameraParameters_h the host-side camera parameters
   * @param[in] deviceCameraParamsId the constant camera parameters array
   */
-void fillDeviceCameraParameters(const DeviceCameraParams& cameraParameters_h, int deviceCameraParamsId)
+void fillDeviceCameraParameters(const DeviceCameraParams& cameraParameters_h, int deviceCameraParamsId, DeviceStream& stream)
+try
 {
     const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
     const cudaError_t err = cudaMemcpyToSymbol(constantCameraParametersArray_d, &cameraParameters_h, sizeof(DeviceCameraParams), deviceCameraParamsId * sizeof(DeviceCameraParams), kind);
     CHECK_CUDA_RETURN_ERROR(err);
     THROW_ON_CUDA_ERROR(err, "Failed to copy camera parameters from host to device.");
+
+    if (!__sycl::cameraParametersArray_d) {
+        __sycl::cameraParametersArray_d = sycl::malloc_shared<__sycl::DeviceCameraParams>(ALICEVISION_DEVICE_MAX_CONSTANT_CAMERA_PARAM_SETS, stream);
+        // TODO: Where to free this one ???
+    }
+
+    sycl::queue& queue = (sycl::queue&)stream;
+    queue.memcpy(&__sycl::cameraParametersArray_d[deviceCameraParamsId], &cameraParameters_h, sizeof(DeviceCameraParams));
+}
+catch(sycl::exception& e) 
+{
+    RETHROW_SYCL_EXCEPTION(e);
 }
 
 DeviceCache::SingleDeviceCache::SingleDeviceCache(int maxMipmapImages, int maxCameraParams, sycl::queue& stream)
@@ -315,7 +330,7 @@ void DeviceCache::addCameraParams(int camId, int downscale, const mvsUtils::Mult
 
     // copy host-side device camera parameters struct to device-side camera parameters array
     // note: device-side camera parameters array is in constant memory
-    fillDeviceCameraParameters(*cameraParameters_h, deviceCameraParamsId);
+    fillDeviceCameraParameters(*cameraParameters_h, deviceCameraParamsId, stream);
 
     // free host-side device camera parameters struct
     CHECK_CUDA_RETURN_ERROR(cudaFreeHost(cameraParameters_h));

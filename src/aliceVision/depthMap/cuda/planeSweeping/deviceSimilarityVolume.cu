@@ -107,7 +107,7 @@ __host__ void cuda_volumeUpdateUninitializedSimilarity(const CudaDeviceMemoryPit
     // check cuda last error
     CHECK_CUDA_ERROR();
 }
-
+/*
 __host__ void cuda_volumeComputeSimilarity(CudaDeviceMemoryPitched<TSim, 3>& out_volBestSim_dmp,
                                            CudaDeviceMemoryPitched<TSim, 3>& out_volSecBestSim_dmp,
                                            const CudaDeviceMemoryPitched<float, 2>& in_depths_dmp,
@@ -160,6 +160,7 @@ __host__ void cuda_volumeComputeSimilarity(CudaDeviceMemoryPitched<TSim, 3>& out
     // check cuda last error
     CHECK_CUDA_ERROR();
 }
+*/
 
 extern void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volSim_dmp, 
                                         const CudaDeviceMemoryPitched<float2, 2>& in_sgmDepthPixSizeMap_dmp,

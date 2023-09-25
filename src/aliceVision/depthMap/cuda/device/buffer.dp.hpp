@@ -19,8 +19,8 @@ namespace depthMap {
     * @param[int] y
     * @return
     */
-    template <typename T, int Dims>
-    inline T& get2DBufferAt(const sycl::accessor<T, Dims>& accessor,size_t x, size_t y)
+    template <typename Accessor>
+    inline typename Accessor::value_type& get2DBufferAt(Accessor& accessor,size_t x, size_t y)
     {
         return accessor[y][x];
         // return &(BufPtr<T>(ptr,pitch).at(x,y));

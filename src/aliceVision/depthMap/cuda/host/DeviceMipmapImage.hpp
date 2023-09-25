@@ -74,6 +74,12 @@ public:
      */
     inline cudaTextureObject_t getTextureObject() const { return _textureObject; }
 
+    /**
+     * @brief Get the Mipmapped Array object holding the mipmapped texture
+     * @remark Temporary accessor for cuda to sycl migration
+     * @return _cudaMipmappedArray_t& 
+     */
+    inline _cudaMipmappedArray_t& getMipmappedArray() { return _mipmappedArray; }
 private:
 
     // private members
