@@ -46,14 +46,17 @@ private:
     std::shared_ptr<sycl::buffer<SyclType, Dim>> m_buffer;
 };
 
+<<<<<<< HEAD
 template <typename Type = CudaRGBA, unsigned Dim = 2>
+=======
+template <typename Type = CudaRGBA, unsigned Dim = 2, typename SyclType = typename sycl_type_mapper<Type>::type>
+>>>>>>> feature/dpct-converted-code
 class ImageLocker
 {
 public:
     ImageLocker(CudaDeviceMemoryPitched<Type, Dim>& deviceMemory)
         : m_deviceMemory(deviceMemory)
     {
-
         m_hostMemory.allocate(m_deviceMemory.getSize());
         m_hostMemory.copyFrom(m_deviceMemory, 0);
         m_range = std::make_shared<sycl::range<Dim>>(m_hostMemory.getSize().x(), m_hostMemory.getSize().y());

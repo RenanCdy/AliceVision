@@ -14,6 +14,11 @@
 #include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/depthMapUtils.hpp>
 
+#include <aliceVision/depthMap/depthMapUtils.hpp>
+#include <aliceVision/depthMap/cuda/host/MemoryLocker.hpp>
+#include <dpct_output/aliceVision/depthMap/cuda/device/color.dp.hpp>
+
+
 namespace aliceVision {
 namespace depthMap {
 
@@ -77,6 +82,61 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
 
     // wait for color conversion kernel completion
     CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
+
+    sycl::queue queue(sycl::cpu_selector_v);
+
+    //{
+    //    ImageLocker il(*img_dmpPtr);
+    //    auto& image = il.image();
+    //    auto& range = il.range();
+    //      // sycl::queue queue;
+    //    queue.submit(
+    //          [&image, &range](sycl::handler& handler)
+    //          {
+    //              auto ai = image.get_access<sycl::float4, sycl::access::mode::read>(handler);
+    //              auto ao = image.get_access<sycl::float4, sycl::access::mode::write>(handler);
+    //              sycl::sampler sampler(sycl::coordinate_normalization_mode::unnormalized, sycl::addressing_mode::clamp,
+    //                                    sycl::filtering_mode::nearest);
+    //              handler.parallel_for(range,
+    //                                   [ai, ao, sampler](sycl::item<2> item)
+    //                                   {
+    //                                       auto coords = sycl::int2(item[0], item[1]);
+    //                                       auto pixel = ai.read(coords, sampler);
+    //                                       std::swap(pixel[0], pixel[2]);
+    //                                       ao.write(coords, pixel);
+    //                                   });
+    //          });
+    //    queue.wait();
+    //}
+    
+    
+    {
+        BufferLocker bl(*img_dmpPtr);
+        auto& buffer = bl.buffer();
+        auto& range = bl.range();
+        queue.submit(
+            [&buffer, &range](sycl::handler& handler)
+            {
+                auto a = buffer.get_access<sycl::access::mode::read_write>(handler);
+                handler.parallel_for(range,
+                                     [a](sycl::item<2> item)
+                                     {
+                                         auto& pixel = a[item[0]][item[1]];
+                                         sycl::float3 rgb;
+                                         constexpr float d = 1 / 255.f;
+                                         rgb[0] = sycl::detail::half2Float(pixel[0]) * d;
+                                         rgb[1] = sycl::detail::half2Float(pixel[1]) * d;
+                                         rgb[2] = sycl::detail::half2Float(pixel[2]) * d;
+                                         auto lab = xyz2lab(rgb2xyz(rgb));
+                                         pixel[0] = sycl::detail::float2Half(lab[0]);
+                                         pixel[1] = sycl::detail::float2Half(lab[1]);
+                                         pixel[2] = sycl::detail::float2Half(lab[2]);
+                                     });
+            });
+        queue.wait();
+    }
+    
+    //writeDeviceImage(*img_dmpPtr, "C:/tmp/test.exr");
 
     // create CUDA mipmapped array from device-sided input image buffer
     cuda_createMipmappedArrayFromImage(&_mipmappedArray, *img_dmpPtr, _levels, stream);

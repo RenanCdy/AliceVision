@@ -615,7 +615,7 @@ void readImage(const std::string& path,
             {
                 ALICEVISION_THROW_ERROR("A DCP color profile is required but cannot be found");
             }
-            float user_mul[4] = { neutral[0],neutral[1],neutral[2],neutral[1] };
+            float user_mul[4] = { static_cast<float>(neutral[0]),static_cast<float>(neutral[1]),static_cast<float>(neutral[2]),static_cast<float>(neutral[1]) };
             if (imageReadOptions.doWBAfterDemosaicing)
             {
                 for (int i = 0; i < 4; ++i)
@@ -640,7 +640,7 @@ void readImage(const std::string& path,
             {
                 ALICEVISION_THROW_ERROR("A DCP color profile is required but cannot be found");
             }
-            float user_mul[4] = { neutral[0],neutral[1],neutral[2],neutral[1] };
+            float user_mul[4] = { static_cast<float>(neutral[0]),static_cast<float>(neutral[1]),static_cast<float>(neutral[2]),static_cast<float>(neutral[1]) };
             if (imageReadOptions.doWBAfterDemosaicing)
             {
                 for (int i = 0; i < 4; ++i)
