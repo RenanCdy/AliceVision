@@ -249,11 +249,12 @@ void DepthMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
     const int nbCamerasParamsPerBatch = nbRcPerBatch * (nbCameraParamsPerSgm + nbCameraParamsPerRefine); // number of camera parameters in the same batch
 
     DeviceCache& deviceCache = DeviceCache::getInstance();
-    deviceCache.build(nbMipmapImagesPerBatch, nbCamerasParamsPerBatch, deviceStreamManager.getStream(0));
+    DeviceStream defaultStream = deviceStreamManager.getStream(0);
+    deviceCache.build(nbMipmapImagesPerBatch, nbCamerasParamsPerBatch, defaultStream);
 
     // build custom patch pattern in CUDA constant memory
     if(_sgmParams.useCustomPatchPattern || _refineParams.useCustomPatchPattern)
-        buildCustomPatchPattern(_depthMapParams.customPatchPattern);
+        buildCustomPatchPattern(_depthMapParams.customPatchPattern, defaultStream);
     
     // allocate Sgm and Refine per stream in device memory
     std::vector<Sgm> sgmPerStream;

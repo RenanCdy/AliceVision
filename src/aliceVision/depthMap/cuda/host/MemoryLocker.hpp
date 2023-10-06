@@ -31,9 +31,19 @@ public:
         
     }
 
+    BufferLocker(const CudaDeviceMemoryPitched<Type, Dim>& deviceMemory)
+        : BufferLocker( const_cast<CudaDeviceMemoryPitched<Type, Dim>&>(deviceMemory) )
+    {     
+        m_cudaBufferIsConst = true;
+    }
+
+
     ~BufferLocker()
     {
-        m_deviceMemory.copyFrom(m_hostMemory, 0);
+        if (!m_cudaBufferIsConst)
+        {
+            m_deviceMemory.copyFrom(m_hostMemory, 0);
+        }
     }
 
 
@@ -71,6 +81,7 @@ private:
     CudaHostMemoryHeap<Type, Dim> m_hostMemory;
     std::shared_ptr<sycl::range<Dim>> m_range;
     std::shared_ptr<sycl::buffer<SyclType, Dim>> m_buffer;
+    bool m_cudaBufferIsConst = false;
 };
 
 template <typename Type = CudaRGBA, unsigned Dim = 2>
@@ -89,9 +100,18 @@ public:
 
     }
 
+    ImageLocker(const CudaDeviceMemoryPitched<Type, Dim>& deviceMemory)
+    : ImageLocker( const_cast<CudaDeviceMemoryPitched<Type, Dim>&>(deviceMemory) )
+    {
+        m_cudaBufferIsConst = true;
+    }
+
     ~ImageLocker()
     {
-        m_deviceMemory.copyFrom(m_hostMemory, 0);
+        if (!m_cudaBufferIsConst)
+        {
+            m_deviceMemory.copyFrom(m_hostMemory, 0);
+        }
     }
 
     sycl::range<Dim>& range() { return *m_range; }
@@ -102,6 +122,7 @@ private:
     CudaHostMemoryHeap<Type, Dim> m_hostMemory;
     std::shared_ptr<sycl::range<Dim>> m_range;
     std::shared_ptr<sycl::image<Dim>> m_image;
+    bool m_cudaBufferIsConst = false;
 };
 
 } // namespace depthMap

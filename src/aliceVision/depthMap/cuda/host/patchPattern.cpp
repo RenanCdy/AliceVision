@@ -8,14 +8,16 @@
 
 #include <aliceVision/system/Logger.hpp>
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
+#include <aliceVision/depthMap/cuda/host/DeviceStreamManager.hpp>
 #include <aliceVision/depthMap/cuda/device/DevicePatchPattern.hpp>
+#include <aliceVision/depthMap/cuda/device/DevicePatchPattern.dp.hpp>
 
 #include <map>
 
 namespace aliceVision {
 namespace depthMap {
 
-void buildCustomPatchPattern(const CustomPatchPatternParams& patchParams)
+void buildCustomPatchPattern(const CustomPatchPatternParams& patchParams, DeviceStream& deviceStream)
 {
     // check at least one patch subpart
     if(patchParams.subpartsParams.empty())
@@ -239,6 +241,15 @@ void buildCustomPatchPattern(const CustomPatchPatternParams& patchParams)
     const cudaError_t err = cudaMemcpyToSymbol(&constantPatchPattern_d, patchPattern_h, sizeof(DevicePatchPattern), 0, cudaMemcpyHostToDevice);
     CHECK_CUDA_RETURN_ERROR(err);
     THROW_ON_CUDA_ERROR(err, "Failed to copy patch parameters from host to device.");
+
+    // Copy to sycl memory
+    sycl::queue& queue = (sycl::queue&)deviceStream;
+    __sycl::patchPattern_d = sycl::malloc_shared<__sycl::DevicePatchPattern>(1, queue);
+    // TODO : Where to free this one ???
+
+    // Pretty strange to copy from the CUDA structure since it supposes that the 2 structures have the same size !
+    assert(sizeof(__sycl::DevicePatchPattern) == sizeof(DevicePatchPattern));
+    queue.memcpy(__sycl::patchPattern_d, patchPattern_h, sizeof(__sycl::DevicePatchPattern));
 
     // free host-side patch pattern struct
     CHECK_CUDA_RETURN_ERROR(cudaFreeHost(patchPattern_h));

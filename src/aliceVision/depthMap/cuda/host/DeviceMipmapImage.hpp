@@ -80,6 +80,13 @@ public:
      * @return _cudaMipmappedArray_t& 
      */
     inline _cudaMipmappedArray_t& getMipmappedArray() { return _mipmappedArray; }
+
+    /**
+     * @brief Get the Mipmapped Array object holding the mipmapped texture
+     * @remark Temporary accessor for cuda to sycl migration
+     * @return _cudaMipmappedArray_t& 
+     */
+    inline const _cudaMipmappedArray_t& getMipmappedArray() const { return _mipmappedArray; }
 private:
 
     // private members

@@ -4,20 +4,14 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#pragma once
-
-#include <aliceVision/depthMap/CustomPatchPatternParams.hpp>
+#include "DevicePatchPattern.dp.hpp"
 
 namespace aliceVision {
 namespace depthMap {
+namespace __sycl {
 
-class DeviceStream;
+DevicePatchPattern* patchPattern_d;
 
-/**
- * @brief Build user custom patch pattern in CUDA constant memory.
- * @param[in] patchParams the user custom patch pattern parameters
- */
-void buildCustomPatchPattern(const CustomPatchPatternParams& patchParams, DeviceStream& deviceStream);
-
+} // namespace __sycl
 } // namespace depthMap
 } // namespace aliceVision

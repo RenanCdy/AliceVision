@@ -78,6 +78,65 @@ namespace depthMap {
         accessor[y][x].w() = sycl::detail::float2Half(rgba[3]);
     }
 
+    template <typename Accessor>
+    inline typename Accessor::value_type sampleTex2DLod(Accessor tex, const sycl::sampler& sampler, float x, int width, float y, int height,
+                            int level)
+    {
+        if (level == 0)
+        {
+            float one_over_width = 1.0f / (float)width;
+            float one_over_height = 1.0f / (float)width;
+            float u = (x + 0.5f) * one_over_width;
+            float v = (y + 0.5f) * one_over_height;
+            u = (u>=0.f)?( (u<=1.f)?u:1.f ):0.f;
+            v = (v>=0.f)?( (v<=1.f)?v:1.f ):0.f;
+            return tex.read( sycl::float2(u, v * 2.0f / 3.0f), sampler);
+        }
+        else
+        {
+            float one_over_levelScale = 1.0f / (float)(1<<level);
+            float one_over_width = one_over_levelScale / (float)width;
+            float one_over_height = one_over_levelScale / (float)height;
+
+            int offset = 0;
+            for (int l = level-1; l > 0; --l)
+            {
+                offset += (1<<l) * width * sizeof(CudaRGBA);
+                // offset = ((offset + 512-1)/512)*512;
+            }
+            offset /= sizeof(CudaRGBA);
+
+            float u = (x + 0.5f) * one_over_width;
+            float v = (y + 0.5f) * one_over_height;
+            
+            u = (u>=0.f)?( (u<=one_over_levelScale)?u:(one_over_levelScale-0.5f*one_over_width) ):0.f;
+            v = (v>=0.f)?( (v<=one_over_levelScale)?v:(one_over_levelScale-0.5f*one_over_height) ):0.f;
+            return tex.read( sycl::float2(u + offset * one_over_width, (v + 1.0f) * 2.0f / 3.0f), sampler);
+        }
+    }
+
+    template <typename Accessor>
+    inline typename Accessor::value_type _tex2DLod(Accessor tex, const sycl::sampler& sampler, float x, int width, float y, int height,
+                    float z)
+    {
+        int highLevel = (int)sycl::floor(z);
+        int lowLevel  = ( (float)highLevel == z) ? highLevel : (highLevel+1);
+
+        if (highLevel == lowLevel) 
+        {
+            return sampleTex2DLod(tex, sampler, x, width, y, height, highLevel);
+        }
+        else
+        {
+            auto high = sampleTex2DLod(tex, sampler, x, width, y, height, highLevel);
+            auto low  = sampleTex2DLod(tex, sampler, (x+0.5)/2.0f - 0.5f, width/2, (y+0.5)/2.0f-0.5f, height/2, lowLevel);
+            // TODO: This version might be better:
+            // auto low  = sampleTex2DLod<T>(tex, x/2.0f, width/2, y/2.0f, height/2, lowLevel);
+            float t = z - (float)highLevel;
+            return (1.0f - t) * high + t * low;
+        }
+    }
+
 } // namespace depthMap
 } // namespace aliceVision
 

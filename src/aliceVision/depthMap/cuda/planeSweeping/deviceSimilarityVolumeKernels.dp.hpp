@@ -31,13 +31,22 @@ void volume_init_kernel(Accessor& inout_volume_d_acc,
     get3DBufferAt(inout_volume_d_acc, vx, vy, vz) = value;
 }
 
+inline void volume_computePatch(Patch& patch, const __sycl::DeviceCameraParams& rcDeviceCamParams,
+                                const __sycl::DeviceCameraParams& tcDeviceCamParams, const float fpPlaneDepth,
+                                const sycl::float2& pix)
+{
+    patch.p = get3DPointForPixelAndFrontoParellePlaneRC(rcDeviceCamParams, pix, fpPlaneDepth);
+    patch.d = computePixSize(rcDeviceCamParams, patch.p);
+    computeRotCSEpip(patch, rcDeviceCamParams, tcDeviceCamParams);
+}
+
 /*
 DPCT1110:0: The total declared local variable size in device function volume_computeSimilarity_kernel exceeds 128 bytes
 and may cause high register pressure. Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 void volume_computeSimilarity_kernel(
-    sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume1st,
+    sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume1st_d,
     sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume2nd_d,
     sycl::accessor<float, 2, sycl::access::mode::read> in_depths_d,
     // TSim* out_volume1st_d, int out_volume1st_s, int out_volume1st_p, 
@@ -46,12 +55,14 @@ void volume_computeSimilarity_kernel(
     const int rcDeviceCameraParamsId,
     const int tcDeviceCameraParamsId,
     const __sycl::DeviceCameraParams* cameraParametersArray_d,
-    sycl::accessor<sycl::float4, 2, sycl::access::mode::read> rcMipmapImage_tex,
-    sycl::accessor<sycl::float4, 2, sycl::access::mode::read> tcMipmapImage_tex,
-    // const unsigned int rcSgmLevelWidth, const unsigned int rcSgmLevelHeight, 
-    // const unsigned int tcSgmLevelWidth, const unsigned int tcSgmLevelHeight, 
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcMipmapImage_tex,
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> tcMipmapImage_tex,
+    sycl::sampler sampler,
+    const unsigned int rcSgmLevelWidth, const unsigned int rcSgmLevelHeight, 
+    const unsigned int tcSgmLevelWidth, const unsigned int tcSgmLevelHeight, 
     const float rcMipmapLevel, const int stepXY, const int wsh,
     const float invGammaC, const float invGammaP, const bool useConsistentScale, const bool useCustomPatchPattern,
+    const __sycl::DevicePatchPattern* const patchPattern_d,
     const Range depthRange, const ROI roi, const sycl::nd_item<3>& item_ct1)
 {
     const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
@@ -93,6 +104,7 @@ void volume_computeSimilarity_kernel(
                                                                     tcDeviceCamParams,
                                                                     rcMipmapImage_tex,
                                                                     tcMipmapImage_tex,
+                                                                    sampler,
                                                                     rcSgmLevelWidth,
                                                                     rcSgmLevelHeight,
                                                                     tcSgmLevelWidth,
@@ -101,7 +113,8 @@ void volume_computeSimilarity_kernel(
                                                                     invGammaC,
                                                                     invGammaP,
                                                                     useConsistentScale,
-                                                                    patch);
+                                                                    patch,
+                                                                    *patchPattern_d);
     }
     else
     {
@@ -109,6 +122,7 @@ void volume_computeSimilarity_kernel(
                                                  tcDeviceCamParams,
                                                  rcMipmapImage_tex,
                                                  tcMipmapImage_tex,
+                                                 sampler,
                                                  rcSgmLevelWidth,
                                                  rcSgmLevelHeight,
                                                  tcSgmLevelWidth,
@@ -145,17 +159,17 @@ void volume_computeSimilarity_kernel(
       fsim *= 254.0f;
     }
 
-    TSim* fsim_1st = get3DBufferAt(out_volume1st_d, out_volume1st_s, out_volume1st_p, size_t(vx), size_t(vy), size_t(vz));
-    TSim* fsim_2nd = get3DBufferAt(out_volume2nd_d, out_volume2nd_s, out_volume2nd_p, size_t(vx), size_t(vy), size_t(vz));
+    TSim& fsim_1st = get3DBufferAt(out_volume1st_d, size_t(vx), size_t(vy), size_t(vz));
+    TSim& fsim_2nd = get3DBufferAt(out_volume2nd_d, size_t(vx), size_t(vy), size_t(vz));
 
-    if(fsim < *fsim_1st)
+    if(fsim < fsim_1st)
     {
-        *fsim_2nd = *fsim_1st;
-        *fsim_1st = TSim(fsim);
+        fsim_2nd = fsim_1st;
+        fsim_1st = TSim(fsim);
     }
-    else if(fsim < *fsim_2nd)
+    else if(fsim < fsim_2nd)
     {
-        *fsim_2nd = TSim(fsim);
+        fsim_2nd = TSim(fsim);
     }
 }
 

@@ -69,6 +69,8 @@ set(depthMap_sycl_headers
   cuda/device/color.dp.hpp
   cuda/imageProcessing/deviceColorConversion.dp.hpp
   cuda/imageProcessing/deviceGaussianFilter.dp.hpp
+  cuda/device/DeviceCameraParams.dp.hpp
+  cuda/device/DevicePatchPattern.dp.hpp
 )
 
 # device CUDA Sources
@@ -102,6 +104,8 @@ set(depthMap_cuda_planeSweeping_headers
 
 # planeSweeping CUDA Sources
 set(depthMap_cuda_planeSweeping_sources
+  cuda/device/DeviceCameraParams.dp.cpp
+  cuda/device/DevicePatchPattern.dp.cpp
   cuda/planeSweeping/similarity.hpp
   cuda/planeSweeping/deviceDepthSimilarityMap.hpp
   cuda/planeSweeping/deviceDepthSimilarityMap.cu
