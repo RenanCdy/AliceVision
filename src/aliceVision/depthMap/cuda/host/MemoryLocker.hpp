@@ -46,11 +46,8 @@ private:
     std::shared_ptr<sycl::buffer<SyclType, Dim>> m_buffer;
 };
 
-<<<<<<< HEAD
-template <typename Type = CudaRGBA, unsigned Dim = 2>
-=======
+
 template <typename Type = CudaRGBA, unsigned Dim = 2, typename SyclType = typename sycl_type_mapper<Type>::type>
->>>>>>> feature/dpct-converted-code
 class ImageLocker
 {
 public:

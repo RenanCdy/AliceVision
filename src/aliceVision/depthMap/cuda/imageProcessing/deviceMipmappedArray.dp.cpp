@@ -132,8 +132,9 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
     });
 
     // get mipmapped array at level 0
-    auto [level0, pos] = _cudaGetMipmappedArrayLevel(out_locker.buffer(), 0);
-
+    auto l0 = _cudaGetMipmappedArrayLevel(out_locker.buffer(), 0);
+    auto level0 = l0.first;
+    auto pos = l0.second;
     size_t width  = in_imgSize.x();
     size_t height = in_imgSize.y();
 
@@ -163,11 +164,14 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
         height /= 2;
 
         // previous level array (or level 0)
-        auto [previousLevelArray, previousPosition] = _cudaGetMipmappedArrayLevel(out_locker.buffer(), l - 1);
+        auto prev = _cudaGetMipmappedArrayLevel(out_locker.buffer(), l - 1);
+        auto previousLevelArray = prev.first;
+        auto previousPosition = prev.second;
 
         // current level array
-        auto [currentLevelArray, currentPosition] = _cudaGetMipmappedArrayLevel(out_locker.buffer(), l);
-
+        auto curr = _cudaGetMipmappedArrayLevel(out_locker.buffer(), l);
+        auto currentLevelArray = curr.first;
+        auto currentPosition = curr.second;
         // downscale previous level image into the current level image
         {
             const sycl::range<2> block(16, 16);
