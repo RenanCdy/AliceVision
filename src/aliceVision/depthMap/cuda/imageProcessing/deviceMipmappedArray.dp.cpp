@@ -138,25 +138,22 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
     size_t width  = in_imgSize.x();
     size_t height = in_imgSize.y();
 
+    // copy input image buffer into mipmapped array at level 0
+    // todo: potentially do a memcpy
     auto levelEvent = stream.submit( [&] (sycl::handler& cgh)
     {
         auto src = in_locker.buffer().get_access<sycl::access::mode::read>(cgh);
         auto dst = level0.get_access<sycl::access::mode::write>(cgh);
         cgh.depends_on(memsetEvent);
 
-        const sycl::range<2> block(16, 16);
-        const sycl::range<2> grid(divUp(height, block[1]), divUp(width, block[0]));
-        cgh.parallel_for(sycl::nd_range<2>(grid * block, block),
-                        [=](sycl::nd_item<2> item)
-                        {
-                            const unsigned int x = item.get_group(1) * item.get_local_range(1) + item.get_local_id(1);
-                            const unsigned int y = item.get_group(0) * item.get_local_range(0) + item.get_local_id(0);
-                            dst[y][x] = src[y][x];
-                        }
-        );
+        sycl::range<2> globalSize(width, height);
+        cgh.parallel_for(globalSize, [=](sycl::id<2> id)
+        {
+            dst[id[1]][id[0]] = src[id[1]][id[0]];
+        });
 
     });
-
+    
     for(size_t l = 1; l < levels; ++l)
     {
         // current level width/height

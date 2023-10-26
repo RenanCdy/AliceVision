@@ -137,13 +137,14 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     }
     
     //writeDeviceImage(*img_dmpPtr, "C:/tmp/test.exr");
+    //writeDeviceImage(*img_dmpPtr, "test.exr");
 
     // create CUDA mipmapped array from device-sided input image buffer
     cuda_createMipmappedArrayFromImage(&_mipmappedArray, *img_dmpPtr, _levels, stream);
 
     static int index = 0;
     std::stringstream ss;
-    ss << "mipmpap_" << index++ << ".png";
+    ss << "mipmap_" << index++ << ".jpg";
     writeDeviceImage(_mipmappedArray, ss.str());
 
     // create CUDA mipmapped array texture object with normalized coordinates
