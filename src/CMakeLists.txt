@@ -212,8 +212,11 @@ if(AV_EIGEN_MEMORY_ALIGNMENT)
     AddCompilerFlag("-faligned-new")
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.12)
     AddCompilerFlag("/Zc:alignedNew")
+   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 2023.1.0)
+    AddCompilerFlag("-faligned-new")
   else()
-    message(FATAL_ERROR "AV_EIGEN_MEMORY_ALIGNMENT is only supported starting GCC 7.1, Clang 6.0 and MSVC 2017 15.5")
+          message(FATAL_ERROR "AV_EIGEN_MEMORY_ALIGNMENT is only supported starting GCC 7.1, Clang 6.0 and MSVC 2017 15.5, no support for ICX")
+    message(FATAL_ERROR " ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} is not officially supported")
   endif()
 endif()
 
@@ -704,14 +707,14 @@ if(ALICEVISION_HAVE_CUDA)
   # Add all requested CUDA CCs to the command line for offline compilation
   list(SORT ALICEVISION_CUDA_CC_LIST)
   foreach(ALICEVISION_CC_VERSION ${ALICEVISION_CUDA_CC_LIST})
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-gencode;arch=compute_${ALICEVISION_CC_VERSION},code=sm_${ALICEVISION_CC_VERSION}")
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-allow-unsupported-compiler;-gencode;arch=compute_${ALICEVISION_CC_VERSION},code=sm_${ALICEVISION_CC_VERSION}")
   endforeach()
 
   # Use the highest request CUDA CC for CUDA JIT compilation
   list(LENGTH ALICEVISION_CUDA_CC_LIST ALICEVISION_CC_LIST_LEN)
   MATH(EXPR ALICEVISION_CC_LIST_LEN "${ALICEVISION_CC_LIST_LEN}-1")
   list(GET ALICEVISION_CUDA_CC_LIST ${ALICEVISION_CC_LIST_LEN} ALICEVISION_CUDA_CC_LIST_LAST)
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-gencode;arch=compute_${ALICEVISION_CUDA_CC_LIST_LAST},code=compute_${ALICEVISION_CUDA_CC_LIST_LAST}")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-allow-unsupported-compiler;-gencode;arch=compute_${ALICEVISION_CUDA_CC_LIST_LAST},code=compute_${ALICEVISION_CUDA_CC_LIST_LAST}")
 
   set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-std=c++17")
 
