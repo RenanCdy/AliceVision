@@ -216,6 +216,7 @@ __global__ void volume_computeSimilarity_kernel(TSim* out_volume1st_d, int out_v
     }
 }
 
+
 __global__ void volume_refineSimilarity_kernel(TSimRefine* inout_volSim_d, int inout_volSim_s, int inout_volSim_p,
                                                const float2* in_sgmDepthPixSizeMap_d, const int in_sgmDepthPixSizeMap_p,
                                                const float3* in_sgmNormalMap_d, const int in_sgmNormalMap_p,

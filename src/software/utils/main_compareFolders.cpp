@@ -104,7 +104,7 @@ int aliceVision_main(int argc, char** argv)
                         errors *= 255.0 / max;
                     }
 
-                    auto outputfile = outputPath / path.filename().replace_extension(".png");
+                    auto outputfile = outputPath / path.filename().replace_extension(".jpg");
                     image::Image<unsigned char> output = {errors.cast<unsigned char>()};
                     oiio::ParamValueList metadata;
                     image::writeImage(outputfile.string(), output,

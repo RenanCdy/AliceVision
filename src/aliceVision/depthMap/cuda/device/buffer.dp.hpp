@@ -42,6 +42,28 @@ namespace depthMap {
         // return ((T*)(((char*)ptr) + z * spitch + y * pitch)) + x;
     }
 
+    /**
+    * @brief
+    * @param[int] ptr
+    * @param[int3] 3 element vector with x y z
+    * @return
+    */
+    template <typename Accessor>
+    inline typename Accessor::value_type& get3DBufferAt(Accessor& accessor, const sycl::int3& v)
+    {
+        return get3DBufferAt(accessor, v.x(), v.y(), v.z());
+    }
+
+    inline float multi_fminf(float a, float b, float c)
+    {
+        return sycl::fmin(sycl::fmin(a, b), c);
+    }
+
+    inline float multi_fminf(float a, float b, float c, float d)
+    {
+        return sycl::fmin(sycl::fmin(sycl::fmin(a, b), c), d);
+    }
+
     inline sycl::float3 make_float3(const sycl::ushort4& us)
     {
         sycl::float3 value;

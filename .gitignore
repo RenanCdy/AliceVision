@@ -29,7 +29,7 @@ Thumbs.db # Windows
 
 # folder receiving the compilation products
 build*
-install
+install*
 lib
 bin
 x64

@@ -80,6 +80,7 @@ __host__ void cuda_volumeAdd(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volum
     CHECK_CUDA_ERROR();
 }
 
+// ported, but untested in deviceSimilarityVolume.dp.cpp
 __host__ void cuda_volumeUpdateUninitializedSimilarity(const CudaDeviceMemoryPitched<TSim, 3>& in_volBestSim_dmp,
                                                        CudaDeviceMemoryPitched<TSim, 3>& inout_volSecBestSim_dmp,
                                                        cudaStream_t stream)
