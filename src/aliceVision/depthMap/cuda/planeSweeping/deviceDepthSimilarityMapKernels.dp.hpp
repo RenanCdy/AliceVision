@@ -221,185 +221,195 @@ void depthThicknessMapSmoothThickness_kernel(sycl::accessor<sycl::float2, 2, syc
     inout_depthThickness.y() = sumCenterDepthDist / nbValidPatchPixels;
 }
 
-// void computeSgmUpscaledDepthPixSizeMap_nearestNeighbor_kernel(
-//     sycl::float2* out_upscaledDepthPixSizeMap_d, int out_upscaledDepthPixSizeMap_p,
-//     const sycl::float2* in_sgmDepthThicknessMap_d, const int in_sgmDepthThicknessMap_p,
-//     const int rcDeviceCameraParamsId, // useful for direct pixSize computation
-//     const dpct::image_accessor_ext<sycl::float4, 2> rcMipmapImage_tex, const unsigned int rcLevelWidth,
-//     const unsigned int rcLevelHeight, const float rcMipmapLevel, const int stepXY, const int halfNbDepths,
-//     const float ratio, const ROI roi, const sycl::nd_item<3>& item_ct1)
-// {
-//     const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
-//     const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+void computeSgmUpscaledDepthPixSizeMap_nearestNeighbor_kernel(
+    sycl::accessor<sycl::float2, 2, sycl::access::mode::write> out_upscaledDepthPixSizeMap_d,
+    sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_sgmDepthThicknessMap_d,
+    //sycl::float2* out_upscaledDepthPixSizeMap_d, int out_upscaledDepthPixSizeMap_p,
+    //const sycl::float2* in_sgmDepthThicknessMap_d, const int in_sgmDepthThicknessMap_p,
+    const int rcDeviceCameraParamsId, // useful for direct pixSize computation
+    //const dpct::image_accessor_ext<sycl::float4, 2> rcMipmapImage_tex, 
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcMipmapImage_tex,
+    sycl::sampler sampler,
+    const unsigned int rcLevelWidth,
+    const unsigned int rcLevelHeight, const float rcMipmapLevel, const int stepXY, const int halfNbDepths,
+    const float ratio, const ROI roi, const sycl::nd_item<3>& item_ct1,
+    const __sycl::DeviceCameraParams* cameraParametersArray_d)
+{
+    const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
-//     if(roiX >= roi.width() || roiY >= roi.height())
-//         return;
+    if(roiX >= roi.width() || roiY >= roi.height())
+        return;
 
-//     // corresponding image coordinates
-//     const unsigned int x = (roi.x.begin + roiX) * (unsigned int)(stepXY);
-//     const unsigned int y = (roi.y.begin + roiY) * (unsigned int)(stepXY);
+    // corresponding image coordinates
+    const unsigned int x = (roi.x.begin + roiX) * (unsigned int)(stepXY);
+    const unsigned int y = (roi.y.begin + roiY) * (unsigned int)(stepXY);
 
-//     // corresponding output upscaled depth/pixSize map
-//     sycl::float2* out_depthPixSize =
-//         get2DBufferAt(out_upscaledDepthPixSizeMap_d, out_upscaledDepthPixSizeMap_p, roiX, roiY);
+    // corresponding output upscaled depth/pixSize map
+    sycl::float2& out_depthPixSize =
+        get2DBufferAt(out_upscaledDepthPixSizeMap_d, roiX, roiY);
 
-//     // filter masked pixels (alpha < 0.9f)
-//     if(_tex2DLod<float4>(rcMipmapImage_tex, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w() < 0.9f)
-//     {
-//         *out_depthPixSize = sycl::float2(-2.f, 0.f);
-//         return;
-//     }
+    // filter masked pixels (alpha < 0.9f)
+    if(_tex2DLod(rcMipmapImage_tex, sampler, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w() < 0.9f)
+    {
+        out_depthPixSize = sycl::float2(-2.f, 0.f);
+        return;
+    }
 
-//     // find corresponding depth/thickness
-//     // nearest neighbor, no interpolation
-//     const float oy = (float(roiY) - 0.5f) * ratio;
-//     const float ox = (float(roiX) - 0.5f) * ratio;
+    // find corresponding depth/thickness
+    // nearest neighbor, no interpolation
+    const float oy = (float(roiY) - 0.5f) * ratio;
+    const float ox = (float(roiX) - 0.5f) * ratio;
 
-//     int xp = sycl::floor(ox + 0.5);
-//     int yp = sycl::floor(oy + 0.5);
+    int xp = sycl::floor(ox + 0.5);
+    int yp = sycl::floor(oy + 0.5);
 
-//     xp = sycl::min(xp, int(roi.width() * ratio) - 1);
-//     yp = sycl::min(yp, int(roi.height() * ratio) - 1);
+    xp = sycl::min(xp, int(roi.width() * ratio) - 1);
+    yp = sycl::min(yp, int(roi.height() * ratio) - 1);
 
-//     const sycl::float2 out_depthThickness =
-//         *get2DBufferAt(in_sgmDepthThicknessMap_d, in_sgmDepthThicknessMap_p, xp, yp);
+    const sycl::float2& out_depthThickness =
+        get2DBufferAt(in_sgmDepthThicknessMap_d, xp, yp);
 
-// #ifdef ALICEVISION_DEPTHMAP_COMPUTE_PIXSIZEMAP
-//     // R camera parameters
-//     const DeviceCameraParams& rcDeviceCamParams = constantCameraParametersArray_d[rcDeviceCameraParamsId];
+#ifdef ALICEVISION_DEPTHMAP_COMPUTE_PIXSIZEMAP
+    // R camera parameters
+    const __sycl::DeviceCameraParams& rcDeviceCamParams = cameraParametersArray_d[rcDeviceCameraParamsId];
 
-//     // get rc 3d point
-//     const float3 p = get3DPointForPixelAndDepthFromRC(rcDeviceCamParams, make_float2(float(x), float(y)), out_depthThickness.x);
+    // get rc 3d point
+    const sycl::float3 p = get3DPointForPixelAndDepthFromRC(rcDeviceCamParams, sycl::float2(float(x), float(y)), out_depthThickness.x());
 
-//     // compute and write rc 3d point pixSize
-//     const float out_pixSize = computePixSize(rcDeviceCamParams, p);
-// #else
-//     // compute pixSize from depth thickness
-//     const float out_pixSize = out_depthThickness.y() / halfNbDepths;
-// #endif
+    // compute and write rc 3d point pixSize
+    const float out_pixSize = computePixSize(rcDeviceCamParams, p);
+#else
+    // compute pixSize from depth thickness
+    const float out_pixSize = out_depthThickness.y() / halfNbDepths;
+#endif
 
-//     // write output depth/pixSize
-//     out_depthPixSize->x() = out_depthThickness.x();
-//     out_depthPixSize->y() = out_pixSize;
-// }
+    // write output depth/pixSize
+    out_depthPixSize.x() = out_depthThickness.x();
+    out_depthPixSize.y() = out_pixSize;
+}
 
-// void computeSgmUpscaledDepthPixSizeMap_bilinear_kernel(
-//     sycl::float2* out_upscaledDepthPixSizeMap_d, int out_upscaledDepthPixSizeMap_p,
-//     const sycl::float2* in_sgmDepthThicknessMap_d, const int in_sgmDepthThicknessMap_p,
-//     const int rcDeviceCameraParamsId, // useful for direct pixSize computation
-//     const dpct::image_accessor_ext<sycl::float4, 2> rcMipmapImage_tex, const unsigned int rcLevelWidth,
-//     const unsigned int rcLevelHeight, const float rcMipmapLevel, const int stepXY, const int halfNbDepths,
-//     const float ratio, const ROI roi, const sycl::nd_item<3>& item_ct1)
-// {
-//     const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
-//     const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+void computeSgmUpscaledDepthPixSizeMap_bilinear_kernel(
+    sycl::accessor<sycl::float2, 2, sycl::access::mode::write> out_upscaledDepthPixSizeMap_d,
+    sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_sgmDepthThicknessMap_d,
+    //sycl::float2* out_upscaledDepthPixSizeMap_d, int out_upscaledDepthPixSizeMap_p,
+    //const sycl::float2* in_sgmDepthThicknessMap_d, const int in_sgmDepthThicknessMap_p,
+    const int rcDeviceCameraParamsId, // useful for direct pixSize computation
+    //const dpct::image_accessor_ext<sycl::float4, 2> rcMipmapImage_tex, 
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcMipmapImage_tex,
+    sycl::sampler sampler,
+    const unsigned int rcLevelWidth,
+    const unsigned int rcLevelHeight, const float rcMipmapLevel, const int stepXY, const int halfNbDepths,
+    const float ratio, const ROI roi, const sycl::nd_item<3>& item_ct1,
+    const __sycl::DeviceCameraParams* cameraParametersArray_d)
+{
+    const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
-//     if(roiX >= roi.width() || roiY >= roi.height())
-//         return;
+    if(roiX >= roi.width() || roiY >= roi.height())
+        return;
 
-//     // corresponding image coordinates
-//     const unsigned int x = (roi.x.begin + roiX) * (unsigned int)(stepXY);
-//     const unsigned int y = (roi.y.begin + roiY) * (unsigned int)(stepXY);
+    // corresponding image coordinates
+    const unsigned int x = (roi.x.begin + roiX) * (unsigned int)(stepXY);
+    const unsigned int y = (roi.y.begin + roiY) * (unsigned int)(stepXY);
 
-//     // corresponding output upscaled depth/pixSize map
-//     sycl::float2* out_depthPixSize =
-//         get2DBufferAt(out_upscaledDepthPixSizeMap_d, out_upscaledDepthPixSizeMap_p, roiX, roiY);
+    // corresponding output upscaled depth/pixSize map
+    sycl::float2& out_depthPixSize =
+        get2DBufferAt(out_upscaledDepthPixSizeMap_d, roiX, roiY);
 
-//     // filter masked pixels with alpha
-//     if(_tex2DLod<float4>(rcMipmapImage_tex, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w() <
-//        ALICEVISION_DEPTHMAP_RC_MIN_ALPHA)
-//     {
-//         *out_depthPixSize = sycl::float2(-2.f, 0.f);
-//         return;
-//     }
+    // filter masked pixels with alpha
+    if(_tex2DLod(rcMipmapImage_tex, sampler, float(x), rcLevelWidth, float(y), rcLevelHeight, rcMipmapLevel).w() <
+       ALICEVISION_DEPTHMAP_RC_MIN_ALPHA)
+    {
+        out_depthPixSize = sycl::float2(-2.f, 0.f);
+        return;
+    }
 
-//     // find adjacent pixels
-//     const float oy = (float(roiY) - 0.5f) * ratio;
-//     const float ox = (float(roiX) - 0.5f) * ratio;
+    // find adjacent pixels
+    const float oy = (float(roiY) - 0.5f) * ratio;
+    const float ox = (float(roiX) - 0.5f) * ratio;
 
-//     int xp = sycl::floor((float)ox);
-//     int yp = sycl::floor((float)oy);
+    int xp = sycl::floor((float)ox);
+    int yp = sycl::floor((float)oy);
 
-//     xp = sycl::min(xp, int(roi.width() * ratio) - 2);
-//     yp = sycl::min(yp, int(roi.height() * ratio) - 2);
+    xp = sycl::min(xp, int(roi.width() * ratio) - 2);
+    yp = sycl::min(yp, int(roi.height() * ratio) - 2);
 
-//     const sycl::float2 lu = *get2DBufferAt(in_sgmDepthThicknessMap_d, in_sgmDepthThicknessMap_p, xp, yp);
-//     const sycl::float2 ru = *get2DBufferAt(in_sgmDepthThicknessMap_d, in_sgmDepthThicknessMap_p, xp + 1, yp);
-//     const sycl::float2 rd = *get2DBufferAt(in_sgmDepthThicknessMap_d, in_sgmDepthThicknessMap_p, xp + 1, yp + 1);
-//     const sycl::float2 ld = *get2DBufferAt(in_sgmDepthThicknessMap_d, in_sgmDepthThicknessMap_p, xp, yp + 1);
+    const sycl::float2& lu = get2DBufferAt(in_sgmDepthThicknessMap_d, xp, yp);
+    const sycl::float2& ru = get2DBufferAt(in_sgmDepthThicknessMap_d, xp + 1, yp);
+    const sycl::float2& rd = get2DBufferAt(in_sgmDepthThicknessMap_d, xp + 1, yp + 1);
+    const sycl::float2& ld = get2DBufferAt(in_sgmDepthThicknessMap_d, xp, yp + 1);
 
-//     // find corresponding depth/thickness
-//     sycl::float2 out_depthThickness;
+    // find corresponding depth/thickness
+    sycl::float2 out_depthThickness;
 
-//     if(lu.x() <= 0.0f || ru.x() <= 0.0f || rd.x() <= 0.0f || ld.x() <= 0.0f)
-//     {
-//         // at least one corner depth is invalid
-//         // average the other corners to get a proper depth/thickness
-//         sycl::float2 sumDepthThickness = {0.0f, 0.0f};
-//         int count = 0;
+    if(lu.x() <= 0.0f || ru.x() <= 0.0f || rd.x() <= 0.0f || ld.x() <= 0.0f)
+    {
+        // at least one corner depth is invalid
+        // average the other corners to get a proper depth/thickness
+        sycl::float2 sumDepthThickness = {0.0f, 0.0f};
+        int count = 0;
 
-//         if(lu.x() > 0.0f)
-//         {
-//             sumDepthThickness = dpct_operator_overloading::operator+(sumDepthThickness, lu);
-//             ++count;
-//         }
-//         if(ru.x() > 0.0f)
-//         {
-//             sumDepthThickness = dpct_operator_overloading::operator+(sumDepthThickness, ru);
-//             ++count;
-//         }
-//         if(rd.x() > 0.0f)
-//         {
-//             sumDepthThickness = dpct_operator_overloading::operator+(sumDepthThickness, rd);
-//             ++count;
-//         }
-//         if(ld.x() > 0.0f)
-//         {
-//             sumDepthThickness = dpct_operator_overloading::operator+(sumDepthThickness, ld);
-//             ++count;
-//         }
-//         if(count != 0)
-//         {
-//             out_depthThickness = {sumDepthThickness.x() / float(count), sumDepthThickness.y() / float(count)};
-//         }
-//         else
-//         {
-//             // invalid depth
-//             *out_depthPixSize = {-1.0f, 1.0f};
-//             return;
-//         }
-//     }
-//     else
-//     {
-//         // bilinear interpolation
-//         const float ui = ox - float(xp);
-//         const float vi = oy - float(yp);
-//         const sycl::float2 u = dpct_operator_overloading::operator+(
-//             lu, dpct_operator_overloading::operator*((dpct_operator_overloading::operator-(ru, lu)), ui));
-//         const sycl::float2 d = dpct_operator_overloading::operator+(
-//             ld, dpct_operator_overloading::operator*((dpct_operator_overloading::operator-(rd, ld)), ui));
-//         out_depthThickness = dpct_operator_overloading::operator+(
-//             u, dpct_operator_overloading::operator*((dpct_operator_overloading::operator-(d, u)), vi));
-//     }
+        if(lu.x() > 0.0f)
+        {
+            sumDepthThickness = sumDepthThickness + lu;
+            ++count;
+        }
+        if(ru.x() > 0.0f)
+        {
+            sumDepthThickness = sumDepthThickness + ru;
+            ++count;
+        }
+        if(rd.x() > 0.0f)
+        {
+            sumDepthThickness = sumDepthThickness + rd;
+            ++count;
+        }
+        if(ld.x() > 0.0f)
+        {
+            sumDepthThickness = sumDepthThickness + ld;
+            ++count;
+        }
+        if(count != 0)
+        {
+            out_depthThickness = {sumDepthThickness.x() / float(count), sumDepthThickness.y() / float(count)};
+        }
+        else
+        {
+            // invalid depth
+            out_depthPixSize = {-1.0f, 1.0f};
+            return;
+        }
+    }
+    else
+    {
+        // bilinear interpolation
+        const float ui = ox - float(xp);
+        const float vi = oy - float(yp);
+        
+        const sycl::float2 u = lu + (ru - lu) * ui;
+        const sycl::float2 d = ld + (rd - ld) * ui;
+        out_depthThickness = u + (d - u) * vi;
+    }
 
-// #ifdef ALICEVISION_DEPTHMAP_COMPUTE_PIXSIZEMAP
-//     // R camera parameters
-//     const DeviceCameraParams& rcDeviceCamParams = constantCameraParametersArray_d[rcDeviceCameraParamsId];
+#ifdef ALICEVISION_DEPTHMAP_COMPUTE_PIXSIZEMAP
+    // R camera parameters
+    const DeviceCameraParams& __sycl::rcDeviceCamParams = cameraParametersArray_d[rcDeviceCameraParamsId];
 
-//     // get rc 3d point
-//     const float3 p = get3DPointForPixelAndDepthFromRC(rcDeviceCamParams, make_float2(float(x), float(y)), out_depthThickness.x);
+    // get rc 3d point
+    const sycl::float3 p = get3DPointForPixelAndDepthFromRC(rcDeviceCamParams, sycl::float2(float(x), float(y)), out_depthThickness.x());
 
-//     // compute and write rc 3d point pixSize
-//     const float out_pixSize = computePixSize(rcDeviceCamParams, p);
-// #else
-//     // compute pixSize from depth thickness
-//     const float out_pixSize = out_depthThickness.y() / halfNbDepths;
-// #endif
+    // compute and write rc 3d point pixSize
+    const float out_pixSize = computePixSize(rcDeviceCamParams, p);
+#else
+    // compute pixSize from depth thickness
+    const float out_pixSize = out_depthThickness.y() / halfNbDepths;
+#endif
 
-//     // write output depth/pixSize
-//     out_depthPixSize->x() = out_depthThickness.x();
-//     out_depthPixSize->y() = out_pixSize;
-// }
+    // write output depth/pixSize
+    out_depthPixSize.x() = out_depthThickness.x();
+    out_depthPixSize.y() = out_pixSize;
+}
 
 template <int TWsh>
 void depthSimMapComputeNormal_kernel(sycl::accessor<sycl::float3, 2, sycl::access::mode::write> out_normalMap_d,

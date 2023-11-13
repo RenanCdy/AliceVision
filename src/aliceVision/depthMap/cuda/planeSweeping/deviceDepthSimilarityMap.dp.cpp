@@ -39,7 +39,6 @@ try {
     const sycl::range<3> block(1, blockSize, blockSize);
     const sycl::range<3> grid(1, divUp(roi.height(), blockSize), divUp(roi.width(), blockSize));
 
-    // kernel execution
     BufferLocker inout_depthThicknessMap_dmp_locker(inout_depthThicknessMap_dmp);
 
     // kernel execution
@@ -61,6 +60,115 @@ try {
                              });
         });
     smoothThicknessEvent.wait();
+
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
+void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<sycl::float2, 2>& out_upscaledDepthPixSizeMap_dmp,
+                                            const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthThicknessMap_dmp,
+                                            const int rcDeviceCameraParamsId,
+                                            const DeviceMipmapImage& rcDeviceMipmapImage,
+                                            const RefineParams& refineParams, const ROI& roi, dpct::queue_ptr stream)
+try {
+    // compute upscale ratio
+    const CudaSize<2>& out_mapDim = out_upscaledDepthPixSizeMap_dmp.getSize();
+    const CudaSize<2>& in_mapDim = in_sgmDepthThicknessMap_dmp.getSize();
+    const float ratio = float(in_mapDim.x()) / float(out_mapDim.x());
+
+    // get R mipmap image level and dimensions
+    const float rcMipmapLevel = rcDeviceMipmapImage.getLevel(refineParams.scale);
+    const CudaSize<2> rcLevelDim = rcDeviceMipmapImage.getDimensions(refineParams.scale);
+
+    // kernel launch parameters
+    const int blockSize = 16;
+    const sycl::range<3> block(1, blockSize, blockSize);
+    const sycl::range<3> grid(1, divUp(roi.height(), blockSize), divUp(roi.width(), blockSize));
+
+    BufferLocker out_upscaledDepthPixSizeMap_dmp_locker(out_upscaledDepthPixSizeMap_dmp);
+    BufferLocker in_sgmDepthThicknessMap_dmp_locker(in_sgmDepthThicknessMap_dmp);
+    ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
+
+
+    // kernel execution
+    sycl::queue& queue = (sycl::queue&)stream;
+    if(refineParams.interpolateMiddleDepth)
+    {
+        
+        auto computeEvent = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto out_upscaledDepthPixSizeMap_dmp_acc = out_upscaledDepthPixSizeMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                auto in_sgmDepthThicknessMap_dmp_acc = in_sgmDepthThicknessMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                // auto out_upscaledDepthPixSizeMap_dmp_getBuffer_ct0 = out_upscaledDepthPixSizeMap_dmp.getBuffer();
+                // auto out_upscaledDepthPixSizeMap_dmp_getPitch_ct1 = out_upscaledDepthPixSizeMap_dmp.getPitch();
+                // auto in_sgmDepthThicknessMap_dmp_getBuffer_ct2 = in_sgmDepthThicknessMap_dmp.getBuffer();
+                // auto in_sgmDepthThicknessMap_dmp_getPitch_ct3 = in_sgmDepthThicknessMap_dmp.getPitch();
+                sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+
+                //auto rcDeviceMipmapImage_getTextureObject_ct5 = rcDeviceMipmapImage.getTextureObject();
+                auto rcLevelDim_x_ct6 = (unsigned int)(rcLevelDim.x());
+                auto rcLevelDim_y_ct7 = (unsigned int)(rcLevelDim.y());
+                const __sycl::DeviceCameraParams* cameraParametersArray_d = __sycl::cameraParametersArray_d;
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(grid * block, block),
+                    [=](sycl::nd_item<3> item_ct1)
+                    {
+                        computeSgmUpscaledDepthPixSizeMap_bilinear_kernel(
+                            out_upscaledDepthPixSizeMap_dmp_acc, in_sgmDepthThicknessMap_dmp_acc,
+                            //out_upscaledDepthPixSizeMap_dmp_getBuffer_ct0, out_upscaledDepthPixSizeMap_dmp_getPitch_ct1,
+                            //in_sgmDepthThicknessMap_dmp_getBuffer_ct2, in_sgmDepthThicknessMap_dmp_getPitch_ct3,
+                            rcDeviceCameraParamsId, 
+                            rcDeviceMipmapImage_acc,
+                            sampler,
+                            //rcDeviceMipmapImage_getTextureObject_ct5, 
+                            rcLevelDim_x_ct6,
+                            rcLevelDim_y_ct7, rcMipmapLevel, refineParams.stepXY, refineParams.halfNbDepths, ratio, roi,
+                            item_ct1, cameraParametersArray_d);
+                    });
+            });
+        computeEvent.wait();
+    }
+    else
+    {
+        auto computeEvent = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto out_upscaledDepthPixSizeMap_dmp_acc = out_upscaledDepthPixSizeMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                auto in_sgmDepthThicknessMap_dmp_acc = in_sgmDepthThicknessMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                // auto out_upscaledDepthPixSizeMap_dmp_getBuffer_ct0 = out_upscaledDepthPixSizeMap_dmp.getBuffer();
+                // auto out_upscaledDepthPixSizeMap_dmp_getPitch_ct1 = out_upscaledDepthPixSizeMap_dmp.getPitch();
+                // auto in_sgmDepthThicknessMap_dmp_getBuffer_ct2 = in_sgmDepthThicknessMap_dmp.getBuffer();
+                // auto in_sgmDepthThicknessMap_dmp_getPitch_ct3 = in_sgmDepthThicknessMap_dmp.getPitch();
+                sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+                
+                //auto rcDeviceMipmapImage_getTextureObject_ct5 = rcDeviceMipmapImage.getTextureObject();
+                auto rcLevelDim_x_ct6 = (unsigned int)(rcLevelDim.x());
+                auto rcLevelDim_y_ct7 = (unsigned int)(rcLevelDim.y());
+                const __sycl::DeviceCameraParams* cameraParametersArray_d = __sycl::cameraParametersArray_d;
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(grid * block, block),
+                    [=](sycl::nd_item<3> item_ct1)
+                    {
+                        computeSgmUpscaledDepthPixSizeMap_nearestNeighbor_kernel(
+                            out_upscaledDepthPixSizeMap_dmp_acc, in_sgmDepthThicknessMap_dmp_acc,
+                            //out_upscaledDepthPixSizeMap_dmp_getBuffer_ct0, out_upscaledDepthPixSizeMap_dmp_getPitch_ct1,
+                            //in_sgmDepthThicknessMap_dmp_getBuffer_ct2, in_sgmDepthThicknessMap_dmp_getPitch_ct3,
+                            rcDeviceCameraParamsId, 
+                            rcDeviceMipmapImage_acc,
+                            sampler,
+                            //rcDeviceMipmapImage_getTextureObject_ct5, 
+                            rcLevelDim_x_ct6,
+                            rcLevelDim_y_ct7, rcMipmapLevel, refineParams.stepXY, refineParams.halfNbDepths, ratio, roi,
+                            item_ct1, cameraParametersArray_d);
+                    });
+            });
+        computeEvent.wait();
+    }
 
 } catch(sycl::exception const & e) {
     RETHROW_SYCL_EXCEPTION(e);
