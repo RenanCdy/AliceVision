@@ -277,6 +277,103 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
+extern void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volSim_dmp,
+                                        const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
+                                        const CudaDeviceMemoryPitched<sycl::float3, 2>* in_sgmNormalMap_dmpPtr,
+                                        const int rcDeviceCameraParamsId, const int tcDeviceCameraParamsId,
+                                        const DeviceMipmapImage& rcDeviceMipmapImage,
+                                        const DeviceMipmapImage& tcDeviceMipmapImage, const RefineParams& refineParams,
+                                        const Range& depthRange, const ROI& roi, DeviceStream& stream)
+try {
+    // get mipmap images level and dimensions
+    const float rcMipmapLevel = rcDeviceMipmapImage.getLevel(refineParams.scale);
+    const CudaSize<2> rcLevelDim = rcDeviceMipmapImage.getDimensions(refineParams.scale);
+    const CudaSize<2> tcLevelDim = tcDeviceMipmapImage.getDimensions(refineParams.scale);
+
+    // kernel launch parameters
+    const sycl::range<3> block = getMaxPotentialBlockSize(volume_refineSimilarity_kernel);
+    const sycl::range<3> grid(depthRange.size(), divUp(roi.height(), block[1]), divUp(roi.width(), block[2]));
+
+    BufferLocker inout_volSim_dmp_locker(inout_volSim_dmp);
+    BufferLocker in_sgmDepthPixSizeMap_dmp_locker(in_sgmDepthPixSizeMap_dmp);
+    BufferLocker in_sgmNormalMap_dmpPtr_locker(*in_sgmNormalMap_dmpPtr);
+    ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
+    ImageLocker tcDeviceMipmapImage_locker(tcDeviceMipmapImage.getMipmappedArray());
+
+    sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+
+    {
+        sycl::queue& queue = (sycl::queue&)stream;
+        auto volume_getSlice_event = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                // constantCameraParametersArray_d.init(*stream);
+                // constantPatchPattern_d.init(*stream);
+                // auto constantCameraParametersArray_d_ptr_ct1 = constantCameraParametersArray_d.get_ptr();
+                // auto constantPatchPattern_d_ptr_ct1 = constantPatchPattern_d.get_ptr();
+                const __sycl::DeviceCameraParams* cameraParametersArray_d = __sycl::cameraParametersArray_d;
+                const __sycl::DevicePatchPattern* patchPattern_d = __sycl::patchPattern_d;
+
+                auto inout_volSim_dmp_acc = inout_volSim_dmp_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                auto in_sgmDepthPixSizeMap_dmp_acc = in_sgmDepthPixSizeMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                auto in_sgmNormalMap_dmpPtr_acc = in_sgmNormalMap_dmpPtr_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+                sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> tcDeviceMipmapImage_acc = tcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+
+                // auto inout_volSim_dmp_getBuffer_ct0 = inout_volSim_dmp.getBuffer();
+                // auto inout_volSim_dmp_getBytesPaddedUpToDim_ct1 = inout_volSim_dmp.getBytesPaddedUpToDim(1);
+                // auto inout_volSim_dmp_getBytesPaddedUpToDim_ct2 = inout_volSim_dmp.getBytesPaddedUpToDim(0);
+                // auto in_sgmDepthPixSizeMap_dmp_getBuffer_ct3 = in_sgmDepthPixSizeMap_dmp.getBuffer();
+                // auto in_sgmDepthPixSizeMap_dmp_getBytesPaddedUpToDim_ct4 =
+                //     in_sgmDepthPixSizeMap_dmp.getBytesPaddedUpToDim(0);
+                // auto in_sgmNormalMap_dmpPtr_nullptr_nullptr_in_sgmNormalMap_dmpPtr_getBuffer_ct5 =
+                //     (in_sgmNormalMap_dmpPtr == nullptr) ? nullptr : in_sgmNormalMap_dmpPtr->getBuffer();
+                // auto in_sgmNormalMap_dmpPtr_nullptr_in_sgmNormalMap_dmpPtr_getBytesPaddedUpToDim_ct6 =
+                //     (in_sgmNormalMap_dmpPtr == nullptr) ? 0 : in_sgmNormalMap_dmpPtr->getBytesPaddedUpToDim(0);
+                //auto rcDeviceMipmapImage_getTextureObject_ct9 = rcDeviceMipmapImage.getTextureObject();
+                //auto tcDeviceMipmapImage_getTextureObject_ct10 = tcDeviceMipmapImage.getTextureObject();
+                auto rcLevelDim_x_ct11 = (unsigned int)(rcLevelDim.x());
+                auto rcLevelDim_y_ct12 = (unsigned int)(rcLevelDim.y());
+                auto tcLevelDim_x_ct13 = (unsigned int)(tcLevelDim.x());
+                auto tcLevelDim_y_ct14 = (unsigned int)(tcLevelDim.y());
+                auto int_inout_volSim_dmp_getSize_z_ct16 = int(inout_volSim_dmp.getSize().z());
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(grid * block, block),
+                    [=](sycl::nd_item<3> item_ct1)
+                    {
+                        volume_refineSimilarity_kernel(
+                            inout_volSim_dmp_acc,
+                            in_sgmDepthPixSizeMap_dmp_acc,
+                            in_sgmNormalMap_dmpPtr_acc, // check for nullptr
+                            // inout_volSim_dmp_getBuffer_ct0, inout_volSim_dmp_getBytesPaddedUpToDim_ct1,
+                            // inout_volSim_dmp_getBytesPaddedUpToDim_ct2, 
+                            // in_sgmDepthPixSizeMap_dmp_getBuffer_ct3,
+                            // in_sgmDepthPixSizeMap_dmp_getBytesPaddedUpToDim_ct4,
+                            // in_sgmNormalMap_dmpPtr_nullptr_nullptr_in_sgmNormalMap_dmpPtr_getBuffer_ct5,
+                            // in_sgmNormalMap_dmpPtr_nullptr_in_sgmNormalMap_dmpPtr_getBytesPaddedUpToDim_ct6,
+                            rcDeviceCameraParamsId, tcDeviceCameraParamsId, 
+                            rcDeviceMipmapImage_acc,
+                            tcDeviceMipmapImage_acc,
+                            sampler,
+                            // rcDeviceMipmapImage_getTextureObject_ct9,
+                            // tcDeviceMipmapImage_getTextureObject_ct10, 
+                            rcLevelDim_x_ct11, rcLevelDim_y_ct12,
+                            tcLevelDim_x_ct13, tcLevelDim_y_ct14, rcMipmapLevel, int_inout_volSim_dmp_getSize_z_ct16,
+                            refineParams.stepXY, refineParams.wsh, (1.f / float(refineParams.gammaC)),
+                            (1.f / float(refineParams.gammaP)), refineParams.useConsistentScale,
+                            refineParams.useCustomPatchPattern, depthRange, roi, item_ct1,
+                            cameraParametersArray_d, patchPattern_d);
+                    });
+            });
+    }
+
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
 void cuda_volumeAggregatePath(CudaDeviceMemoryPitched<TSim, 3>& out_volAgr_dmp,
                               CudaDeviceMemoryPitched<TSimAcc, 2>& inout_volSliceAccA_dmp,
                               CudaDeviceMemoryPitched<TSimAcc, 2>& inout_volSliceAccB_dmp,
