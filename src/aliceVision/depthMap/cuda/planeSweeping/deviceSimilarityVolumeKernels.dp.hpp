@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <dpct/dpct.hpp>
+
 #include <aliceVision/mvsData/ROI.hpp>
 #include <aliceVision/depthMap/cuda/device/buffer.dp.hpp>
 #include <aliceVision/depthMap/cuda/device/Patch.dp.hpp>
@@ -14,6 +16,16 @@
 
 namespace aliceVision {
 namespace depthMap {
+
+inline float depthPlaneToDepth(const __sycl::DeviceCameraParams& deviceCamParams, const float fpPlaneDepth,
+                               const sycl::float2& pix)
+{
+    const sycl::float3 planep = deviceCamParams.C + deviceCamParams.ZVect * fpPlaneDepth;
+    sycl::float3 v = M3x3mulV2(deviceCamParams.iP, pix);
+    normalize(v);
+    sycl::float3 p = linePlaneIntersect(deviceCamParams.C, v, planep, deviceCamParams.ZVect);
+    return size(deviceCamParams.C - p);
+}
 
 template <typename Accessor, typename T>
 void volume_init_kernel(Accessor& inout_volume_d_acc,
@@ -359,6 +371,137 @@ void volume_agregateCostVolumeAtXinSlices_kernel(
     TSim& volume_xyz = get3DBufferAt(volAgr_d, v.x(), v.y(), v.z());
     const float val = (float(volume_xyz) * float(filteringIndex) + pathCost) / float(filteringIndex + 1);
     volume_xyz = TSim(val);
+}
+
+void volume_retrieveBestDepth_kernel(sycl::accessor<sycl::float2, 2, sycl::access::mode::read_write> out_sgmDepthThicknessMap_d,
+                                     sycl::accessor<sycl::float2, 2, sycl::access::mode::read_write> out_sgmDepthSimMap_d,
+                                     //sycl::float2* out_sgmDepthThicknessMap_d, int out_sgmDepthThicknessMap_p,
+                                     //sycl::float2* out_sgmDepthSimMap_d,
+                                     //int out_sgmDepthSimMap_p, // output depth/sim map is optional (nullptr)
+                                     sycl::accessor<float, 2, sycl::access::mode::read> in_depths_d,
+                                     sycl::accessor<TSim, 3, sycl::access::mode::read> in_volSim_d,
+                                     //const float* in_depths_d, const int in_depths_p, const TSim* in_volSim_d,
+                                     //const int in_volSim_s, const int in_volSim_p, 
+                                     const int rcDeviceCameraParamsId,
+                                     const int volDimZ, // useful for depth/sim interpolation
+                                     const int scaleStep,
+                                     const float thicknessMultFactor, // default 1
+                                     const float maxSimilarity, const Range depthRange, const ROI roi,
+                                     const sycl::nd_item<3>& item_ct1,
+                                     const __sycl::DeviceCameraParams* cameraParametersArray_d)
+{
+    const unsigned int vx = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int vy = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+
+    if(vx >= roi.width() || vy >= roi.height())
+        return;
+
+    // R camera parameters
+    const __sycl::DeviceCameraParams& rcDeviceCamParams = cameraParametersArray_d[rcDeviceCameraParamsId];
+
+    // corresponding image coordinates
+    const sycl::float2 pix{float((roi.x.begin + vx) * scaleStep), float((roi.y.begin + vy) * scaleStep)};
+
+    // corresponding output depth/thickness pointer
+    sycl::float2& out_bestDepthThicknessPtr =
+        get2DBufferAt(out_sgmDepthThicknessMap_d, vx, vy);
+
+    // corresponding output depth/sim pointer or nullptr
+    bool out_bestDepthSimPtr_is_null = (out_sgmDepthSimMap_d.get_size() == 0);
+    sycl::float2 placeholderfloat;
+    sycl::float2& out_bestDepthSimPtr =
+        (out_bestDepthSimPtr_is_null) ? placeholderfloat : get2DBufferAt(out_sgmDepthSimMap_d, vx, vy);
+
+    // find the best depth plane index for the current pixel
+    // the best depth plane has the best similarity value
+    // - best possible similarity value is 0
+    // - worst possible similarity value is 254
+    // - invalid similarity value is 255
+    float bestSim = 255.f;
+    int bestZIdx = -1;
+
+    for(int vz = depthRange.begin; vz < depthRange.end; ++vz)
+    {
+      const float& simAtZ = get3DBufferAt(in_volSim_d, vx, vy, vz);
+
+      if(simAtZ < bestSim)
+      {
+        bestSim = simAtZ;
+        bestZIdx = vz;
+      }
+    }
+
+    // filtering out invalid values and values with a too bad score (above the user maximum similarity threshold)
+    // note: this helps to reduce following calculations and also the storage volume of the depth maps.
+    if((bestZIdx == -1) || (bestSim > maxSimilarity))
+    {
+        out_bestDepthThicknessPtr.x() = -1.f; // invalid depth
+        out_bestDepthThicknessPtr.y() = -1.f; // invalid thickness
+
+        if(!out_bestDepthSimPtr_is_null)
+        {
+            out_bestDepthSimPtr.x() = -1.f; // invalid depth
+            out_bestDepthSimPtr.y() = 1.f;  // worst similarity value
+        }
+        return;
+    }
+
+    // find best depth plane previous and next indexes
+    const int bestZIdx_m1 = sycl::max(0, bestZIdx - 1);           // best depth plane previous index
+    const int bestZIdx_p1 = sycl::min(volDimZ - 1, bestZIdx + 1); // best depth plane next index
+
+    // get best best depth current, previous and next plane depth values
+    // note: float3 struct is useful for depth interpolation
+    sycl::float3 depthPlanes;
+    depthPlanes.x() = get2DBufferAt(in_depths_d, bestZIdx_m1, 0); // best depth previous plane
+    depthPlanes.y() = get2DBufferAt(in_depths_d, bestZIdx, 0);    // best depth plane
+    depthPlanes.z() = get2DBufferAt(in_depths_d, bestZIdx_p1, 0); // best depth next plane
+
+    const float bestDepth = depthPlaneToDepth(rcDeviceCamParams, depthPlanes.y(), pix);    // best depth
+    const float bestDepth_m1 = depthPlaneToDepth(rcDeviceCamParams, depthPlanes.x(), pix); // previous best depth
+    const float bestDepth_p1 = depthPlaneToDepth(rcDeviceCamParams, depthPlanes.z(), pix); // next best depth
+
+#ifdef ALICEVISION_DEPTHMAP_RETRIEVE_BEST_Z_INTERPOLATION
+    // with depth/sim interpolation
+    // note: disable by default
+
+    float3 sims;
+    sims.x = *get3DBufferAt(in_volSim_d, in_volSim_s, in_volSim_p, vx, vy, bestZIdx_m1);
+    sims.y = bestSim;
+    sims.z = *get3DBufferAt(in_volSim_d, in_volSim_s, in_volSim_p, vx, vy, bestZIdx_p1);
+
+    // convert sims from (0, 255) to (-1, +1)
+    sims.x = (sims.x / 255.0f) * 2.0f - 1.0f;
+    sims.y = (sims.y / 255.0f) * 2.0f - 1.0f;
+    sims.z = (sims.z / 255.0f) * 2.0f - 1.0f;
+
+    // interpolation between the 3 depth planes candidates
+    const float refinedDepthPlane = refineDepthSubPixel(depthPlanes, sims);
+
+    const float out_bestDepth = depthPlaneToDepth(rcDeviceCamParams, refinedDepthPlane, pix);
+    const float out_bestSim = sims.y;
+#else
+    // without depth interpolation
+    const float out_bestDepth = bestDepth;
+    const float out_bestSim = (bestSim / 255.0f) * 2.0f - 1.0f; // convert from (0, 255) to (-1, +1)
+#endif
+
+    // compute output best depth thickness
+    // thickness is the maximum distance between output best depth and previous or next depth
+    // thickness can be inflate with thicknessMultFactor
+    const float out_bestDepthThickness =
+        sycl::max(bestDepth_p1 - out_bestDepth, out_bestDepth - bestDepth_m1) * thicknessMultFactor;
+
+    // write output depth/thickness
+    out_bestDepthThicknessPtr.x() = out_bestDepth;
+    out_bestDepthThicknessPtr.y() = out_bestDepthThickness;
+
+    if(!out_bestDepthSimPtr_is_null)
+    {
+        // write output depth/sim
+        out_bestDepthSimPtr.x() = out_bestDepth;
+        out_bestDepthSimPtr.y() = out_bestSim;
+    }
 }
 
 }

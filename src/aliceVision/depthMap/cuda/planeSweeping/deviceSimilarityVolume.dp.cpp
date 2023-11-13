@@ -533,5 +533,84 @@ void cuda_volumeOptimize(CudaDeviceMemoryPitched<TSim, 3>& out_volSimFiltered_dm
     }
 }
 
+
+void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<sycl::float2, 2>& out_sgmDepthThicknessMap_dmp,
+                                  CudaDeviceMemoryPitched<sycl::float2, 2>& out_sgmDepthSimMap_dmp,
+                                  const CudaDeviceMemoryPitched<float, 2>& in_depths_dmp,
+                                  const CudaDeviceMemoryPitched<TSim, 3>& in_volSim_dmp,
+                                  const int rcDeviceCameraParamsId, const SgmParams& sgmParams, const Range& depthRange,
+                                  const ROI& roi, dpct::queue_ptr stream)
+try {
+    // constant kernel inputs
+    const int scaleStep = sgmParams.scale * sgmParams.stepXY;
+    const float thicknessMultFactor = 1.f + float(sgmParams.depthThicknessInflate);
+    const float maxSimilarity = float(sgmParams.maxSimilarity) * 254.f; // convert from (0, 1) to (0, 254)
+
+    // kernel launch parameters
+    const sycl::range<3> block = getMaxPotentialBlockSize(volume_retrieveBestDepth_kernel);
+    const sycl::range<3> grid(1, divUp(roi.height(), block[1]), divUp(roi.width(), block[2]));
+
+
+    BufferLocker out_sgmDepthThicknessMap_dmp_locker(out_sgmDepthThicknessMap_dmp);
+    BufferLocker out_sgmDepthSimMap_dmp_locker(out_sgmDepthSimMap_dmp);
+    BufferLocker in_depths_dmp_locker(in_depths_dmp);
+    BufferLocker in_volSim_dmp_locker(in_volSim_dmp);
+
+    // kernel execution
+    {
+        sycl::queue& queue = (sycl::queue&)stream;
+        auto retrieveBestDepth_event = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto out_sgmDepthThicknessMap_dmp_acc = out_sgmDepthThicknessMap_dmp_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                auto out_sgmDepthSimMap_dmp_acc = out_sgmDepthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                auto in_depths_dmp_acc = in_depths_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                auto in_volSim_dmp_acc = in_volSim_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+                //__sycl::cameraParametersArray_d->init(*stream);
+                //auto constantCameraParametersArray_d_ptr_ct1 = __sycl::cameraParametersArray_d->get_ptr();
+
+                const __sycl::DeviceCameraParams* cameraParametersArray_d = __sycl::cameraParametersArray_d;
+                //const __sycl::DevicePatchPattern* patchPattern_d = __sycl::patchPattern_d;
+
+                //auto out_sgmDepthThicknessMap_dmp_getBuffer_ct0 = out_sgmDepthThicknessMap_dmp.getBuffer();
+                //auto out_sgmDepthThicknessMap_dmp_getBytesPaddedUpToDim_ct1 =
+                //    out_sgmDepthThicknessMap_dmp.getBytesPaddedUpToDim(0);
+                //auto out_sgmDepthSimMap_dmp_getBuffer_ct2 = out_sgmDepthSimMap_dmp.getBuffer();
+                //auto out_sgmDepthSimMap_dmp_getBytesPaddedUpToDim_ct3 = out_sgmDepthSimMap_dmp.getBytesPaddedUpToDim(0);
+                //auto in_depths_dmp_getBuffer_ct4 = in_depths_dmp.getBuffer();
+                //auto in_depths_dmp_getBytesPaddedUpToDim_ct5 = in_depths_dmp.getBytesPaddedUpToDim(0);
+                //auto in_volSim_dmp_getBuffer_ct6 = in_volSim_dmp.getBuffer();
+                //auto in_volSim_dmp_getBytesPaddedUpToDim_ct7 = in_volSim_dmp.getBytesPaddedUpToDim(1);
+                //auto in_volSim_dmp_getBytesPaddedUpToDim_ct8 = in_volSim_dmp.getBytesPaddedUpToDim(0);
+                auto int_in_volSim_dmp_getSize_z_ct10 = int(in_volSim_dmp.getSize().z());
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(grid * block, block),
+                    [=](sycl::nd_item<3> item_ct1)
+                    {
+                        volume_retrieveBestDepth_kernel(
+                            //out_sgmDepthThicknessMap_dmp_getBuffer_ct0,
+                            //out_sgmDepthThicknessMap_dmp_getBytesPaddedUpToDim_ct1,
+                            //out_sgmDepthSimMap_dmp_getBuffer_ct2, out_sgmDepthSimMap_dmp_getBytesPaddedUpToDim_ct3,
+                            //in_depths_dmp_getBuffer_ct4, in_depths_dmp_getBytesPaddedUpToDim_ct5,
+                            //in_volSim_dmp_getBuffer_ct6, in_volSim_dmp_getBytesPaddedUpToDim_ct7,
+                            //in_volSim_dmp_getBytesPaddedUpToDim_ct8,
+                            out_sgmDepthThicknessMap_dmp_acc,
+                            out_sgmDepthSimMap_dmp_acc,
+                            in_depths_dmp_acc, in_volSim_dmp_acc,
+                            rcDeviceCameraParamsId,
+                            int_in_volSim_dmp_getSize_z_ct10, scaleStep, thicknessMultFactor, maxSimilarity, depthRange,
+                            roi, item_ct1, cameraParametersArray_d);
+                    });
+            });
+            retrieveBestDepth_event.wait();
+
+    }
+
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
 }
 }
