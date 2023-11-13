@@ -133,28 +133,30 @@ static inline float orientedPointPlaneDistanceNormalizedNormal(const sycl::float
 //     out_depthSim->y() = defaultSim;
 // }
 
-// template<class T>
-// void mapUpscale_kernel(T* out_upscaledMap_d, int out_upscaledMap_p,
-//                                   const T* in_map_d, int in_map_p, 
-//                                   const float ratio,
-//                                   const ROI roi)
-// {
-//     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-//     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+template<class T>
+void mapUpscale_kernel(sycl::accessor<T, 2, sycl::access::mode::write> out_upscaledMap_d,
+                                  sycl::accessor<T, 2, sycl::access::mode::read> in_map_d,
+                        //T* out_upscaledMap_d, int out_upscaledMap_p,
+                        //          const T* in_map_d, int in_map_p, 
+                                  const float ratio,
+                                  const ROI roi, const sycl::nd_item<3>& item_ct1)
+{
+    const unsigned int x = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int y = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);  
 
-//     if(x >= roi.width() || y >= roi.height())
-//         return;
+    if(x >= roi.width() || y >= roi.height())
+        return;
 
-//     const float ox = (float(x) - 0.5f) * ratio;
-//     const float oy = (float(y) - 0.5f) * ratio;
+    const float ox = (float(x) - 0.5f) * ratio;
+    const float oy = (float(y) - 0.5f) * ratio;
 
-//     // nearest neighbor, no interpolation
-//     const int xp = min(int(floor(ox + 0.5)), int(roi.width()  * ratio) - 1);
-//     const int yp = min(int(floor(oy + 0.5)), int(roi.height() * ratio) - 1);
+    // nearest neighbor, no interpolation
+    const int xp = sycl::min(int(sycl::floor(ox + 0.5)), int(roi.width()  * ratio) - 1);
+    const int yp = sycl::min(int(sycl::floor(oy + 0.5)), int(roi.height() * ratio) - 1);
 
-//     // write output upscaled map
-//     *get2DBufferAt(out_upscaledMap_d, out_upscaledMap_p, x, y) = *get2DBufferAt(in_map_d, in_map_p, xp, yp);
-// }
+    // write output upscaled map
+    get2DBufferAt(out_upscaledMap_d, x, y) = get2DBufferAt(in_map_d, xp, yp);
+}
 
 void depthThicknessMapSmoothThickness_kernel(sycl::accessor<sycl::float2, 2, sycl::access::mode::read_write> inout_depthThicknessMap_d,
                                              //sycl::float2* inout_depthThicknessMap_d, int inout_depthThicknessMap_p,

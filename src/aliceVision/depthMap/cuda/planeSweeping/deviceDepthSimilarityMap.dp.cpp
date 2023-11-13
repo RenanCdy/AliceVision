@@ -18,6 +18,51 @@
 namespace aliceVision {
 namespace depthMap {
 
+void cuda_normalMapUpscale(CudaDeviceMemoryPitched<sycl::float3, 2>& out_upscaledMap_dmp,
+                           const CudaDeviceMemoryPitched<sycl::float3, 2>& in_map_dmp, const ROI& roi,
+                           DeviceStream& stream)
+try {
+    // compute upscale ratio
+    const CudaSize<2>& out_mapDim = out_upscaledMap_dmp.getSize();
+    const CudaSize<2>& in_mapDim = in_map_dmp.getSize();
+    const float ratio = float(in_mapDim.x()) / float(out_mapDim.x());
+
+    // kernel launch parameters
+    const int blockSize = 16;
+    const sycl::range<3> block(1, blockSize, blockSize);
+    const sycl::range<3> grid(1, divUp(roi.height(), blockSize), divUp(roi.width(), blockSize));
+
+
+    BufferLocker out_upscaledMap_dmp_locker(out_upscaledMap_dmp);
+    BufferLocker in_map_dmp_locker(in_map_dmp);
+
+    // kernel execution
+    sycl::queue& queue = (sycl::queue&)stream;
+    auto mapUpscaleEvent = queue.submit(
+        [&](sycl::handler& cgh)
+        {
+            auto out_upscaledMap_dmp_acc = out_upscaledMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+            auto in_map_dmp_acc = in_map_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+            // auto out_upscaledMap_dmp_getBuffer_ct0 = out_upscaledMap_dmp.getBuffer();
+            // auto out_upscaledMap_dmp_getPitch_ct1 = out_upscaledMap_dmp.getPitch();
+            // auto in_map_dmp_getBuffer_ct2 = in_map_dmp.getBuffer();
+            // auto in_map_dmp_getPitch_ct3 = in_map_dmp.getPitch();
+
+            cgh.parallel_for(sycl::nd_range<3>(grid * block, block),
+                             [=](sycl::nd_item<3> item_ct1)
+                             {
+                                 mapUpscale_kernel<sycl::float3>(
+                                    out_upscaledMap_dmp_acc, in_map_dmp_acc,
+                                     //out_upscaledMap_dmp_getBuffer_ct0, out_upscaledMap_dmp_getPitch_ct1,
+                                     //in_map_dmp_getBuffer_ct2, in_map_dmp_getPitch_ct3, 
+                                     ratio, roi, item_ct1);
+                             });
+        });
+    mapUpscaleEvent.wait();   
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
 
 void cuda_depthThicknessSmoothThickness(CudaDeviceMemoryPitched<sycl::float2, 2>& inout_depthThicknessMap_dmp,
                                         const SgmParams& sgmParams, const RefineParams& refineParams, const ROI& roi,
