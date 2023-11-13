@@ -116,22 +116,24 @@ static inline float orientedPointPlaneDistanceNormalizedNormal(const sycl::float
     return (dot(point, planeNormalNormalized) - dot(planePoint, planeNormalNormalized));
 }
 
-// void depthSimMapCopyDepthOnly_kernel(sycl::float2* out_deptSimMap_d, int out_deptSimMap_p,
-//                                      const sycl::float2* in_depthSimMap_d, const int in_depthSimMap_p,
-//                                      const unsigned int width, const unsigned int height, const float defaultSim,
-//                                      const sycl::nd_item<3>& item_ct1)
-// {
-//     const unsigned int x = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
-//     const unsigned int y = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+void depthSimMapCopyDepthOnly_kernel(sycl::accessor<sycl::float2, 2, sycl::access::mode::write> out_deptSimMap_d,
+                                     sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_depthSimMap_d,
+                                     //sycl::float2* out_deptSimMap_d, int out_deptSimMap_p,
+                                     //const sycl::float2* in_depthSimMap_d, const int in_depthSimMap_p,
+                                     const unsigned int width, const unsigned int height, const float defaultSim,
+                                     const sycl::nd_item<3>& item_ct1)
+{
+    const unsigned int x = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int y = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
-//     if(x >= width || y >= height)
-//         return;
+    if(x >= width || y >= height)
+        return;
 
-//     // write output
-//     sycl::float2* out_depthSim = get2DBufferAt(out_deptSimMap_d, out_deptSimMap_p, x, y);
-//     out_depthSim->x() = get2DBufferAt(in_depthSimMap_d, in_depthSimMap_p, x, y)->x();
-//     out_depthSim->y() = defaultSim;
-// }
+    // write output
+    sycl::float2& out_depthSim = get2DBufferAt(out_deptSimMap_d, x, y);
+    out_depthSim.x() = get2DBufferAt(in_depthSimMap_d, x, y).x();
+    out_depthSim.y() = defaultSim;
+}
 
 template<class T>
 void mapUpscale_kernel(sycl::accessor<T, 2, sycl::access::mode::write> out_upscaledMap_d,

@@ -18,6 +18,51 @@
 namespace aliceVision {
 namespace depthMap {
 
+void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<sycl::float2, 2>& out_depthSimMap_dmp,
+                                   const CudaDeviceMemoryPitched<sycl::float2, 2>& in_depthSimMap_dmp, float defaultSim,
+                                   DeviceStream& stream)
+try {
+    // get output map dimensions
+    const CudaSize<2>& depthSimMapDim = out_depthSimMap_dmp.getSize();
+
+    // kernel launch parameters
+    const int blockSize = 16;
+    const sycl::range<3> block(1, blockSize, blockSize);
+    const sycl::range<3> grid(1, divUp(depthSimMapDim.y(), blockSize), divUp(depthSimMapDim.x(), blockSize));
+
+    BufferLocker out_depthSimMap_dmp_locker(out_depthSimMap_dmp);
+    BufferLocker in_depthSimMap_dmp_locker(in_depthSimMap_dmp);
+
+    // kernel execution
+    sycl::queue& queue = (sycl::queue&)stream;
+    auto copyEvent = queue.submit(
+        [&](sycl::handler& cgh)
+        {
+            auto out_depthSimMap_dmp_acc = out_depthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+            auto in_depthSimMap_dmp_acc = in_depthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+            // auto out_depthSimMap_dmp_getBuffer_ct0 = out_depthSimMap_dmp.getBuffer();
+            // auto out_depthSimMap_dmp_getPitch_ct1 = out_depthSimMap_dmp.getPitch();
+            // auto in_depthSimMap_dmp_getBuffer_ct2 = in_depthSimMap_dmp.getBuffer();
+            // auto in_depthSimMap_dmp_getPitch_ct3 = in_depthSimMap_dmp.getPitch();
+            auto depthSimMapDim_x_ct4 = (unsigned int)(depthSimMapDim.x());
+            auto depthSimMapDim_y_ct5 = (unsigned int)(depthSimMapDim.y());
+
+            cgh.parallel_for(sycl::nd_range<3>(grid * block, block),
+                             [=](sycl::nd_item<3> item_ct1)
+                             {
+                                 depthSimMapCopyDepthOnly_kernel(
+                                     out_depthSimMap_dmp_acc, in_depthSimMap_dmp_acc,
+                                     //out_depthSimMap_dmp_getBuffer_ct0, out_depthSimMap_dmp_getPitch_ct1,
+                                     //in_depthSimMap_dmp_getBuffer_ct2, in_depthSimMap_dmp_getPitch_ct3,
+                                     depthSimMapDim_x_ct4, depthSimMapDim_y_ct5, defaultSim, item_ct1);
+                             });
+        });
+    copyEvent.wait();   
+
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
 void cuda_normalMapUpscale(CudaDeviceMemoryPitched<sycl::float3, 2>& out_upscaledMap_dmp,
                            const CudaDeviceMemoryPitched<sycl::float3, 2>& in_map_dmp, const ROI& roi,
                            DeviceStream& stream)
