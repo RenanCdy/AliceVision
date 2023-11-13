@@ -636,7 +636,7 @@ void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<sycl::float2, 2>& out_
                                   const CudaDeviceMemoryPitched<float, 2>& in_depths_dmp,
                                   const CudaDeviceMemoryPitched<TSim, 3>& in_volSim_dmp,
                                   const int rcDeviceCameraParamsId, const SgmParams& sgmParams, const Range& depthRange,
-                                  const ROI& roi, dpct::queue_ptr stream)
+                                  const ROI& roi, DeviceStream& stream)
 try {
     // constant kernel inputs
     const int scaleStep = sgmParams.scale * sgmParams.stepXY;
@@ -705,6 +705,68 @@ try {
 
     }
 
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
+extern void cuda_volumeRefineBestDepth(CudaDeviceMemoryPitched<sycl::float2, 2>& out_refineDepthSimMap_dmp,
+                                       const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
+                                       const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volSim_dmp,
+                                       const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)
+try {
+    // constant kernel inputs
+    const int halfNbSamples = refineParams.nbSubsamples * refineParams.halfNbDepths;
+    const float twoTimesSigmaPowerTwo = float(2.0 * refineParams.sigma * refineParams.sigma);
+
+    // kernel launch parameters
+    const sycl::range<3> block = getMaxPotentialBlockSize(volume_refineBestDepth_kernel);
+    const sycl::range<3> grid(1, divUp(roi.height(), block[1]), divUp(roi.width(), block[2]));
+
+    BufferLocker out_refineDepthSimMap_dmp_locker(out_refineDepthSimMap_dmp);
+    BufferLocker in_sgmDepthPixSizeMap_dmp_locker(in_sgmDepthPixSizeMap_dmp);
+    BufferLocker in_volSim_dmp_locker(in_volSim_dmp);
+
+    // kernel execution
+    {
+        sycl::queue& queue = (sycl::queue&)stream;
+        auto refineBestDepth_event = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto out_refineDepthSimMap_dmp_acc = out_refineDepthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                auto in_sgmDepthPixSizeMap_dmp_acc = in_sgmDepthPixSizeMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                auto in_volSim_dmp_acc = in_volSim_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+                // auto out_refineDepthSimMap_dmp_getBuffer_ct0 = out_refineDepthSimMap_dmp.getBuffer();
+                // auto out_refineDepthSimMap_dmp_getBytesPaddedUpToDim_ct1 =
+                //     out_refineDepthSimMap_dmp.getBytesPaddedUpToDim(0);
+                // auto in_sgmDepthPixSizeMap_dmp_getBuffer_ct2 = in_sgmDepthPixSizeMap_dmp.getBuffer();
+                // auto in_sgmDepthPixSizeMap_dmp_getBytesPaddedUpToDim_ct3 =
+                //     in_sgmDepthPixSizeMap_dmp.getBytesPaddedUpToDim(0);
+                // auto in_volSim_dmp_getBuffer_ct4 = in_volSim_dmp.getBuffer();
+                // auto in_volSim_dmp_getBytesPaddedUpToDim_ct5 = in_volSim_dmp.getBytesPaddedUpToDim(1);
+                // auto in_volSim_dmp_getBytesPaddedUpToDim_ct6 = in_volSim_dmp.getBytesPaddedUpToDim(0);
+                auto int_in_volSim_dmp_getSize_z_ct7 = int(in_volSim_dmp.getSize().z());
+
+                cgh.parallel_for(sycl::nd_range<3>(grid * block, block),
+                                 [=](sycl::nd_item<3> item_ct1)
+                                 {
+                                     volume_refineBestDepth_kernel(
+                                        out_refineDepthSimMap_dmp_acc,
+                                        in_sgmDepthPixSizeMap_dmp_acc,
+                                        in_volSim_dmp_acc,
+                                        //  out_refineDepthSimMap_dmp_getBuffer_ct0,
+                                        //  out_refineDepthSimMap_dmp_getBytesPaddedUpToDim_ct1,
+                                        //  in_sgmDepthPixSizeMap_dmp_getBuffer_ct2,
+                                        //  in_sgmDepthPixSizeMap_dmp_getBytesPaddedUpToDim_ct3,
+                                        //  in_volSim_dmp_getBuffer_ct4, in_volSim_dmp_getBytesPaddedUpToDim_ct5,
+                                        //  in_volSim_dmp_getBytesPaddedUpToDim_ct6, 
+                                         int_in_volSim_dmp_getSize_z_ct7,
+                                         refineParams.nbSubsamples, halfNbSamples, refineParams.halfNbDepths,
+                                         twoTimesSigmaPowerTwo, roi, item_ct1);
+                                 });
+            });
+            refineBestDepth_event.wait();
+    }
 } catch(sycl::exception const & e) {
     RETHROW_SYCL_EXCEPTION(e);
 }
