@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <dpct/dpct.hpp>
-
 #include <aliceVision/mvsData/ROI.hpp>
 #include <aliceVision/depthMap/cuda/device/buffer.dp.hpp>
 #include <aliceVision/depthMap/cuda/device/Patch.dp.hpp>
