@@ -7,7 +7,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "aliceVision/depthMap/cuda/device/buffer.dp.hpp"
 #include "aliceVision/depthMap/cuda/device/color.dp.hpp"
 #include "aliceVision/depthMap/cuda/device/matrix.dp.hpp"
@@ -34,6 +33,14 @@ inline sycl::float3 get3DPointForPixelAndFrontoParellePlaneRC(const __sycl::Devi
     sycl::float3 v = M3x3mulV2(deviceCamParams.iP, pix);
     normalize(v);
     return linePlaneIntersect(deviceCamParams.C, v, planep, deviceCamParams.ZVect);
+}
+
+inline sycl::float3 get3DPointForPixelAndDepthFromRC(const __sycl::DeviceCameraParams& deviceCamParams, const sycl::float2& pix,
+                                                     float depth)
+{
+    sycl::float3 rpv = M3x3mulV2(deviceCamParams.iP, pix);
+    normalize(rpv);
+    return deviceCamParams.C + rpv * depth;
 }
 
 inline float computePixSize(const __sycl::DeviceCameraParams& deviceCamParams, const sycl::float3& p)

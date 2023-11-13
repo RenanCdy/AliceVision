@@ -94,6 +94,7 @@ set(depthMap_sycl_imageProcessing_sources
   cuda/imageProcessing/deviceGaussianFilter.dp.cpp
   cuda/imageProcessing/deviceMipmappedArray.dp.cpp
   cuda/planeSweeping/deviceSimilarityVolume.dp.cpp
+  cuda/planeSweeping/deviceDepthSimilarityMap.dp.cpp
 )
 
 # planeSweeping CUDA Headers Only
