@@ -69,7 +69,7 @@ void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<sycl::float2
                                             const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthThicknessMap_dmp,
                                             const int rcDeviceCameraParamsId,
                                             const DeviceMipmapImage& rcDeviceMipmapImage,
-                                            const RefineParams& refineParams, const ROI& roi, dpct::queue_ptr stream)
+                                            const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)
 try {
     // compute upscale ratio
     const CudaSize<2>& out_mapDim = out_upscaledDepthPixSizeMap_dmp.getSize();
