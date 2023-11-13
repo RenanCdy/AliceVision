@@ -156,69 +156,71 @@ static inline float orientedPointPlaneDistanceNormalizedNormal(const sycl::float
 //     *get2DBufferAt(out_upscaledMap_d, out_upscaledMap_p, x, y) = *get2DBufferAt(in_map_d, in_map_p, xp, yp);
 // }
 
-// void depthThicknessMapSmoothThickness_kernel(sycl::float2* inout_depthThicknessMap_d, int inout_depthThicknessMap_p,
-//                                              const float minThicknessInflate, const float maxThicknessInflate,
-//                                              const ROI roi, const sycl::nd_item<3>& item_ct1)
-// {
-//     const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
-//     const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+void depthThicknessMapSmoothThickness_kernel(sycl::accessor<sycl::float2, 2, sycl::access::mode::read_write> inout_depthThicknessMap_d,
+                                             //sycl::float2* inout_depthThicknessMap_d, int inout_depthThicknessMap_p,
+                                             const float minThicknessInflate, const float maxThicknessInflate,
+                                             const ROI roi, const sycl::nd_item<3>& item_ct1)
+{
+    const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
+    const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
-//     if(roiX >= roi.width() || roiY >= roi.height())
-//         return;
+    if(roiX >= roi.width() || roiY >= roi.height())
+        return;
 
-//     // corresponding output depth/thickness (depth unchanged)
-//     sycl::float2* inout_depthThickness =
-//         get2DBufferAt(inout_depthThicknessMap_d, inout_depthThicknessMap_p, roiX, roiY);
+    // corresponding output depth/thickness (depth unchanged)
+    sycl::float2& inout_depthThickness =
+        get2DBufferAt(inout_depthThicknessMap_d, roiX, roiY);
 
-//     // depth invalid or masked
-//     if(inout_depthThickness->x() <= 0.0f)
-//         return;
+    // depth invalid or masked
+    if(inout_depthThickness.x() <= 0.0f)
+        return;
 
-//     const float minThickness = minThicknessInflate * inout_depthThickness->y();
-//     const float maxThickness = maxThicknessInflate * inout_depthThickness->y();
+    const float minThickness = minThicknessInflate * inout_depthThickness.y();
+    const float maxThickness = maxThicknessInflate * inout_depthThickness.y();
 
-//     // compute average depth distance to the center pixel
-//     float sumCenterDepthDist = 0.f;
-//     int nbValidPatchPixels = 0;
+    // compute average depth distance to the center pixel
+    float sumCenterDepthDist = 0.f;
+    int nbValidPatchPixels = 0;
 
-//     // patch 3x3
-//     for(int yp = -1; yp <= 1; ++yp)
-//     {
-//         for(int xp = -1; xp <= 1; ++xp)
-//         {
-//             // compute patch coordinates
-//             const int roiXp = int(roiX) + xp;
-//             const int roiYp = int(roiY) + yp;
+    // patch 3x3
+    for(int yp = -1; yp <= 1; ++yp)
+    {
+        for(int xp = -1; xp <= 1; ++xp)
+        {
+            // compute patch coordinates
+            const int roiXp = int(roiX) + xp;
+            const int roiYp = int(roiY) + yp;
 
-//             if((xp == 0 && yp == 0) ||                // avoid pixel center
-//                roiXp < 0 || roiXp >= roi.width() ||   // avoid pixel outside the ROI
-//                roiYp < 0 || roiYp >= roi.height())    // avoid pixel outside the ROI
-//             {
-//                 continue;
-//             }
+            if((xp == 0 && yp == 0) ||                // avoid pixel center
+               roiXp < 0 || roiXp >= roi.width() ||   // avoid pixel outside the ROI
+               roiYp < 0 || roiYp >= roi.height())    // avoid pixel outside the ROI
+            {
+                continue;
+            }
 
-//             // corresponding path depth/thickness
-//             const sycl::float2 in_depthThicknessPatch =
-//                 *get2DBufferAt(inout_depthThicknessMap_d, inout_depthThicknessMap_p, roiXp, roiYp);
+            // corresponding path depth/thickness
+            const sycl::float2& in_depthThicknessPatch =
+                get2DBufferAt(inout_depthThicknessMap_d, roiXp, roiYp);
 
-//             // patch depth valid
-//             if(in_depthThicknessPatch.x() > 0.0f)
-//             {
-//                 const float depthDistance = sycl::fabs(inout_depthThickness->x() - in_depthThicknessPatch.x());
-//                 sumCenterDepthDist += sycl::max(
-//                     minThickness, sycl::min(maxThickness, depthDistance)); // clamp (minThickness, maxThickness)
-//                 ++nbValidPatchPixels;
-//             }
-//         }
-//     }
+            // patch depth valid
+            if(in_depthThicknessPatch.x() > 0.0f)
+            {
+                const float depthDistance = sycl::fabs(inout_depthThickness.x() - in_depthThicknessPatch.x());
+                sumCenterDepthDist += sycl::max(
+                    minThickness, sycl::min(maxThickness, depthDistance)); // clamp (minThickness, maxThickness)
+                ++nbValidPatchPixels;
+            }
+        }
+    }
 
-//     // we require at least 3 valid patch pixels (over 8)
-//     if(nbValidPatchPixels < 3)
-//         return;
+    // we require at least 3 valid patch pixels (over 8)
+    if(nbValidPatchPixels < 3)
+        return;
 
-//     // write output smooth thickness
-//     inout_depthThickness->y() = sumCenterDepthDist / nbValidPatchPixels;
-// }
+    // write output smooth thickness
+    inout_depthThickness.y() = sumCenterDepthDist / nbValidPatchPixels;
+}
+
 // void computeSgmUpscaledDepthPixSizeMap_nearestNeighbor_kernel(
 //     sycl::float2* out_upscaledDepthPixSizeMap_d, int out_upscaledDepthPixSizeMap_p,
 //     const sycl::float2* in_sgmDepthThicknessMap_d, const int in_sgmDepthThicknessMap_p,
