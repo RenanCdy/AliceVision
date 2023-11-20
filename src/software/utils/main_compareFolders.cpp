@@ -99,6 +99,21 @@ int aliceVision_main(int argc, char** argv)
                     std::cout << "\tmin error: " << min << std::endl;
                     std::cout << "\tmax error: " << max << std::endl;
 
+                    image::RowMatrixXf im1 = (image).cwiseAbs();
+                    double mean1 = im1.mean();
+                    double min1 = im1.minCoeff();
+                    double max1 = im1.maxCoeff();
+                    std::cout << "\t i1 mean error: " << mean1 << std::endl;
+                    std::cout << "\t i1 min error: " << min1 << std::endl;
+                    std::cout << "\t i1 max error: " << max1 << std::endl;
+
+                    image::RowMatrixXf im2 = (imageRef).cwiseAbs();
+                    double mean2 = imageRef.mean();
+                    double min2 = imageRef.minCoeff();
+                    double max2 = imageRef.maxCoeff();
+                    std::cout << "\t i2 mean error: " << mean2 << std::endl;
+                    std::cout << "\t i2 min error: " << min2 << std::endl;
+                    std::cout << "\t i2 max error: " << max2 << std::endl;
                     if (max != 0)
                     {
                         errors *= 255.0 / max;

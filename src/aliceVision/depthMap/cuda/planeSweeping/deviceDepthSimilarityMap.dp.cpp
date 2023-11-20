@@ -309,5 +309,160 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
+void cuda_depthSimMapOptimizeGradientDescent(CudaDeviceMemoryPitched<sycl::float2, 2>& out_optimizeDepthSimMap_dmp,
+                                             CudaDeviceMemoryPitched<float, 2>& inout_imgVariance_dmp,
+                                             CudaDeviceMemoryPitched<float, 2>& inout_tmpOptDepthMap_dmp,
+                                             const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
+                                             const CudaDeviceMemoryPitched<sycl::float2, 2>& in_refineDepthSimMap_dmp,
+                                             const int rcDeviceCameraParamsId,
+                                             const DeviceMipmapImage& rcDeviceMipmapImage,
+                                             const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)
+try {
+    // get R mipmap image level and dimensions
+    const float rcMipmapLevel = rcDeviceMipmapImage.getLevel(refineParams.scale);
+    const CudaSize<2> rcLevelDim = rcDeviceMipmapImage.getDimensions(refineParams.scale);
+
+    // initialize depth/sim map optimized with SGM depth/pixSize map
+    out_optimizeDepthSimMap_dmp.copyFrom(in_sgmDepthPixSizeMap_dmp, stream);
+
+    {
+        // kernel launch parameters
+        const sycl::range<3> lblock(1, 2, 32);
+        const sycl::range<3> lgrid(1, divUp(roi.height(), lblock[1]), divUp(roi.width(), lblock[2]));
+
+        BufferLocker inout_imgVariance_dmp_locker(inout_imgVariance_dmp);
+        ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
+
+        // kernel execution
+        sycl::queue& queue = (sycl::queue&)stream;
+        auto optimizeEvent = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto inout_imgVariance_dmp_acc = inout_imgVariance_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                //auto inout_imgVariance_dmp_getBuffer_ct0 = inout_imgVariance_dmp.getBuffer();
+                //auto inout_imgVariance_dmp_getPitch_ct1 = inout_imgVariance_dmp.getPitch();
+                //auto rcDeviceMipmapImage_getTextureObject_ct2 = rcDeviceMipmapImage.getTextureObject();
+                auto rcLevelDim_x_ct3 = (unsigned int)(rcLevelDim.x());
+                auto rcLevelDim_y_ct4 = (unsigned int)(rcLevelDim.y());
+
+                sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+
+                cgh.parallel_for(sycl::nd_range<3>(lgrid * lblock, lblock),
+                                 [=](sycl::nd_item<3> item_ct1)
+                                 {
+                                     optimize_varLofLABtoW_kernel(
+                                         inout_imgVariance_dmp_acc, rcDeviceMipmapImage_acc,
+                                         sampler,
+                                         //inout_imgVariance_dmp_getBuffer_ct0, inout_imgVariance_dmp_getPitch_ct1,
+                                         //rcDeviceMipmapImage_getTextureObject_ct2, 
+                                         rcLevelDim_x_ct3, rcLevelDim_y_ct4,
+                                         rcMipmapLevel, refineParams.stepXY, roi, item_ct1);
+                                 });
+            });
+        optimizeEvent.wait();
+    }
+
+    //CudaTexture<float, false, false> imgVarianceTex(inout_imgVariance_dmp); // neighbor interpolation, without normalized coordinates
+    //CudaTexture<float, false, false> depthTex(inout_tmpOptDepthMap_dmp);    // neighbor interpolation, without normalized coordinates
+
+    // kernel launch parameters
+    const int blockSize = 16;
+    const sycl::range<3> block(1, blockSize, blockSize);
+    const sycl::range<3> grid(1, divUp(roi.height(), blockSize), divUp(roi.width(), blockSize));
+
+    BufferLocker inout_tmpOptDepthMap_dmp_locker(inout_tmpOptDepthMap_dmp);
+    BufferLocker out_optimizeDepthSimMap_dmp_locker(out_optimizeDepthSimMap_dmp);
+
+    for(int iter = 0; iter < refineParams.optimizationNbIterations; ++iter) // default nb iterations is 100
+    {
+        
+        // copy depths values from out_depthSimMapOptimized_dmp to inout_tmpOptDepthMap_dmp
+        sycl::queue& queue = (sycl::queue&)stream;
+        auto optimizeEvent = queue.submit(
+            [&](sycl::handler& cgh)
+            {
+                auto inout_tmpOptDepthMap_dmp_acc = inout_tmpOptDepthMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                auto out_optimizeDepthSimMap_dmp_acc = out_optimizeDepthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                // auto inout_tmpOptDepthMap_dmp_getBuffer_ct0 = inout_tmpOptDepthMap_dmp.getBuffer();
+                // auto inout_tmpOptDepthMap_dmp_getPitch_ct1 = inout_tmpOptDepthMap_dmp.getPitch();
+                // auto out_optimizeDepthSimMap_dmp_getBuffer_ct2 = out_optimizeDepthSimMap_dmp.getBuffer();
+                // auto out_optimizeDepthSimMap_dmp_getPitch_ct3 = out_optimizeDepthSimMap_dmp.getPitch();
+
+                cgh.parallel_for(sycl::nd_range<3>(grid * block, block),
+                                 [=](sycl::nd_item<3> item_ct1)
+                                 {
+                                     optimize_getOptDeptMapFromOptDepthSimMap_kernel(
+                                        inout_tmpOptDepthMap_dmp_acc, out_optimizeDepthSimMap_dmp_acc,
+                                        //  inout_tmpOptDepthMap_dmp_getBuffer_ct0, inout_tmpOptDepthMap_dmp_getPitch_ct1,
+                                        //  out_optimizeDepthSimMap_dmp_getBuffer_ct2,
+                                        //  out_optimizeDepthSimMap_dmp_getPitch_ct3, 
+                                         roi, item_ct1);
+                                 });
+            });
+        optimizeEvent.wait();
+
+        // adjust depth/sim by using previously computed depths
+        {
+
+
+            BufferLocker out_optimizeDepthSimMap_dmp_locker(out_optimizeDepthSimMap_dmp);
+            BufferLocker in_sgmDepthPixSizeMap_dmp_locker(in_sgmDepthPixSizeMap_dmp);
+            BufferLocker in_refineDepthSimMap_dmp_locker(in_refineDepthSimMap_dmp);
+            // CudaDeviceMemoryPitched<float, 2>& inout_imgVariance_dmp
+            // CudaDeviceMemoryPitched<float, 2>& inout_tmpOptDepthMap_dmp
+            // TODO: Validate if we need image sampler for neighbor interpolation
+            BufferLocker imgVarianceTex_locker(inout_imgVariance_dmp);
+            BufferLocker depthTex_locker(inout_tmpOptDepthMap_dmp);
+
+            sycl::queue& queue = (sycl::queue&)stream;
+            auto optimizeEvent = queue.submit(
+                [&](sycl::handler& cgh)
+                {
+                    // constantCameraParametersArray_d.init(*stream);
+                    // auto constantCameraParametersArray_d_ptr_ct1 = constantCameraParametersArray_d.get_ptr();
+                    const __sycl::DeviceCameraParams* cameraParametersArray_d = __sycl::cameraParametersArray_d;
+
+                    auto out_optimizeDepthSimMap_dmp_acc = out_optimizeDepthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+                    auto in_sgmDepthPixSizeMap_dmp_acc = in_sgmDepthPixSizeMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                    auto in_refineDepthSimMap_dmp_acc = in_refineDepthSimMap_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                
+                    // auto out_optimizeDepthSimMap_dmp_getBuffer_ct0 = out_optimizeDepthSimMap_dmp.getBuffer();
+                    // auto out_optimizeDepthSimMap_dmp_getPitch_ct1 = out_optimizeDepthSimMap_dmp.getPitch();
+                    // auto in_sgmDepthPixSizeMap_dmp_getBuffer_ct2 = in_sgmDepthPixSizeMap_dmp.getBuffer();
+                    // auto in_sgmDepthPixSizeMap_dmp_getPitch_ct3 = in_sgmDepthPixSizeMap_dmp.getPitch();
+                    // auto in_refineDepthSimMap_dmp_getBuffer_ct4 = in_refineDepthSimMap_dmp.getBuffer();
+                    // auto in_refineDepthSimMap_dmp_getPitch_ct5 = in_refineDepthSimMap_dmp.getPitch();
+                    // auto imgVarianceTex_textureObj_ct7 = imgVarianceTex.textureObj;
+                    // auto depthTex_textureObj_ct8 = depthTex.textureObj;
+
+                    //sycl::accessor<float, 2, sycl::access::mode::read, sycl::access::target::image> imgVarianceTex_acc = imgVarianceTex_locker.image().get_access<float, sycl::access::mode::read>(cgh);
+                    //sycl::accessor<float, 2, sycl::access::mode::read, sycl::access::target::image> depthTex_acc = depthTex_locker.image().get_access<float, sycl::access::mode::read>(cgh);
+                    auto imgVarianceTex_acc = imgVarianceTex_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                    auto depthTex_acc = depthTex_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+                    cgh.parallel_for(
+                        sycl::nd_range<3>(grid * block, block),
+                        [=](sycl::nd_item<3> item_ct1)
+                        {
+                            optimize_depthSimMap_kernel(
+                                out_optimizeDepthSimMap_dmp_acc, in_sgmDepthPixSizeMap_dmp_acc, in_refineDepthSimMap_dmp_acc,
+                                // out_optimizeDepthSimMap_dmp_getBuffer_ct0, out_optimizeDepthSimMap_dmp_getPitch_ct1,
+                                // in_sgmDepthPixSizeMap_dmp_getBuffer_ct2, in_sgmDepthPixSizeMap_dmp_getPitch_ct3,
+                                // in_refineDepthSimMap_dmp_getBuffer_ct4, in_refineDepthSimMap_dmp_getPitch_ct5,
+                                rcDeviceCameraParamsId, 
+                                //imgVarianceTex_textureObj_ct7, depthTex_textureObj_ct8, 
+                                imgVarianceTex_acc, depthTex_acc, iter,
+                                roi, item_ct1, cameraParametersArray_d);
+                        });
+                });
+        }
+        optimizeEvent.wait();
+    }
+
+} catch(sycl::exception const & e) {
+    RETHROW_SYCL_EXCEPTION(e);
+}
+
 } // namespace depthMap
 } // namespace aliceVision

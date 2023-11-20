@@ -7,6 +7,9 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
+#include <cmath>
+#define M_PIF 3.141592653589793238462643383279502884e+00F
+
 // #include "aliceVision/depthMap/cuda/device/operators.dp.hpp"
 
 // mn MATRIX ADDRESSING: mxy = x*n+y (x-row,y-col), (m-number of rows, n-number of columns)
@@ -83,17 +86,55 @@ inline sycl::float2 project3DPoint(const float* M3x4, const sycl::float3& V)
     return sycl::float2(p.x() * pzInv, p.y() * pzInv);
 }
 
+inline sycl::float3 linePlaneIntersect(const sycl::float3& linePoint, const sycl::float3& lineVect,
+                                       const sycl::float3& planePoint, const sycl::float3& planeNormal)
+{
+    const float k = (dot(planePoint, planeNormal) - dot(planeNormal, linePoint)) / dot(planeNormal, lineVect);
+    return linePoint + k * lineVect;
+}
+
+inline sycl::float3 closestPointOnPlaneToPoint(const sycl::float3& point, const sycl::float3& planePoint,
+                                               const sycl::float3& planeNormalNormalized)
+{
+    return point - planeNormalNormalized * dot(planeNormalNormalized, point - planePoint);
+}
+
+inline sycl::float3 closestPointToLine3D(const sycl::float3& point, const sycl::float3& linePoint,
+                                         const sycl::float3& lineVectNormalized)
+{
+    return linePoint + lineVectNormalized * dot(lineVectNormalized, point - linePoint);
+}
+
 inline float pointLineDistance3D(const sycl::float3& point, const sycl::float3& linePoint,
                                  const sycl::float3& lineVectNormalized)
 {
     return size(cross(lineVectNormalized, linePoint - point));
 }
 
-inline sycl::float3 linePlaneIntersect(const sycl::float3& linePoint, const sycl::float3& lineVect,
-                                       const sycl::float3& planePoint, const sycl::float3& planeNormal)
+// v1,v2 dot not have to be normalized
+inline float angleBetwV1andV2(const sycl::float3& iV1, const sycl::float3& iV2)
 {
-    const float k = (dot(planePoint, planeNormal) - dot(planeNormal, linePoint)) / dot(planeNormal, lineVect);
-    return linePoint + k * lineVect;
+    sycl::float3 V1 = iV1;
+    normalize(V1);
+
+    sycl::float3 V2 = iV2;
+    normalize(V2);
+
+    return sycl::fabs(sycl::acos(V1.x() * V2.x() + V1.y() * V2.y() + V1.z() * V2.z()) / (M_PIF / 180.0f));
+}
+
+inline float angleBetwABandAC(const sycl::float3& A, const sycl::float3& B, const sycl::float3& C)
+{
+    sycl::float3 V1 = B - A;
+    sycl::float3 V2 = C - A;
+
+    normalize(V1);
+    normalize(V2);
+
+    const double x = double(V1.x() * V2.x() + V1.y() * V2.y() + V1.z() * V2.z());
+    double a = sycl::acos((double)x);
+    a = sycl::isinf(a) ? 0.0 : a;
+    return float(sycl::fabs(a) / (M_PI / 180.0));
 }
 
 /**
