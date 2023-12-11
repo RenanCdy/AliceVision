@@ -6,7 +6,7 @@
 #include <aliceVision/depthMap/cuda/host/MemoryLocker.hpp>
 
 #include <aliceVision/depthMap/cuda/host/divUp.hpp>
-
+#include <aliceVision/depthMap/cuda/device/customDataType.dp.hpp>
 #include <map>
 
 namespace aliceVision {
@@ -230,7 +230,8 @@ try {
     const CudaSize<3>& volDim = inout_volSecBestSim_dmp.getSize();
 
     // kernel launch parameters
-    const sycl::range<3> block = getMaxPotentialBlockSize(volume_updateUninitialized_kernel);
+    const sycl::range<3> block(1,18,32);
+    //TODO: const sycl::range<3> block = getMaxPotentialBlockSize(volume_updateUninitialized_kernel);
     const sycl::range<3> grid(volDim.z(), divUp(volDim.y(), block[1]), divUp(volDim.x(), block[2]));
 
     // kernel execution
@@ -277,13 +278,16 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-extern void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volSim_dmp,
-                                        const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
-                                        const CudaDeviceMemoryPitched<sycl::float3, 2>* in_sgmNormalMap_dmpPtr,
-                                        const int rcDeviceCameraParamsId, const int tcDeviceCameraParamsId,
+void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volSim_dmp, 
+                                        const CudaDeviceMemoryPitched<float2, 2>& in_sgmDepthPixSizeMap_dmp,
+                                        const CudaDeviceMemoryPitched<float3, 2>* in_sgmNormalMap_dmpPtr,
+                                        const int rcDeviceCameraParamsId,
+                                        const int tcDeviceCameraParamsId,
                                         const DeviceMipmapImage& rcDeviceMipmapImage,
-                                        const DeviceMipmapImage& tcDeviceMipmapImage, const RefineParams& refineParams,
-                                        const Range& depthRange, const ROI& roi, DeviceStream& stream)
+                                        const DeviceMipmapImage& tcDeviceMipmapImage,
+                                        const RefineParams& refineParams, 
+                                        const Range& depthRange,
+                                        const ROI& roi, DeviceStream& stream)
 try {
     // get mipmap images level and dimensions
     const float rcMipmapLevel = rcDeviceMipmapImage.getLevel(refineParams.scale);
@@ -296,7 +300,7 @@ try {
 
     BufferLocker inout_volSim_dmp_locker(inout_volSim_dmp);
     BufferLocker in_sgmDepthPixSizeMap_dmp_locker(in_sgmDepthPixSizeMap_dmp);
-    BufferLocker in_sgmNormalMap_dmpPtr_locker(*in_sgmNormalMap_dmpPtr);
+    BufferLocker in_sgmNormalMap_dmpPtr_locker(in_sgmNormalMap_dmpPtr);
     ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
     ImageLocker tcDeviceMipmapImage_locker(tcDeviceMipmapImage.getMipmappedArray());
 
@@ -631,8 +635,8 @@ void cuda_volumeOptimize(CudaDeviceMemoryPitched<TSim, 3>& out_volSimFiltered_dm
 }
 
 
-void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<sycl::float2, 2>& out_sgmDepthThicknessMap_dmp,
-                                  CudaDeviceMemoryPitched<sycl::float2, 2>& out_sgmDepthSimMap_dmp,
+void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<float2, 2>& out_sgmDepthThicknessMap_dmp,
+                                  CudaDeviceMemoryPitched<float2, 2>& out_sgmDepthSimMap_dmp,
                                   const CudaDeviceMemoryPitched<float, 2>& in_depths_dmp,
                                   const CudaDeviceMemoryPitched<TSim, 3>& in_volSim_dmp,
                                   const int rcDeviceCameraParamsId, const SgmParams& sgmParams, const Range& depthRange,
@@ -709,8 +713,8 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-extern void cuda_volumeRefineBestDepth(CudaDeviceMemoryPitched<sycl::float2, 2>& out_refineDepthSimMap_dmp,
-                                       const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
+extern void cuda_volumeRefineBestDepth(CudaDeviceMemoryPitched<float2, 2>& out_refineDepthSimMap_dmp,
+                                       const CudaDeviceMemoryPitched<float2, 2>& in_sgmDepthPixSizeMap_dmp,
                                        const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volSim_dmp,
                                        const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)
 try {

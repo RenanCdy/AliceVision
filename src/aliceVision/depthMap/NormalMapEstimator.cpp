@@ -88,7 +88,7 @@ void NormalMapEstimator::compute(int cudaDeviceId, const std::vector<int>& cams)
             CudaDeviceMemoryPitched<float3, 2> out_normalMap_dmp(in_depthSimMap_dmp.getSize());
 
             // compute normal map
-            cuda_depthSimMapComputeNormal(out_normalMap_dmp, in_depthSimMap_dmp, rcDeviceCameraParamsId, 1 /*step*/, roi, 0 /*stream*/);
+            cuda_depthSimMapComputeNormal(out_normalMap_dmp, in_depthSimMap_dmp, rcDeviceCameraParamsId, 1 /*step*/, roi, stream);
 
             // write output normal map
             writeNormalMapFiltered(rc, _mp, tileParams, roi, out_normalMap_dmp);

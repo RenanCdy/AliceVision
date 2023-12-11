@@ -367,8 +367,8 @@ __global__ void volume_refineSimilarity_kernel(TSimRefine* inout_volSim_d, int i
     // add the output similarity value
 #ifdef TSIM_REFINE_USE_HALF
     // note: using built-in half addition can give bad results on some gpus
-    //*outSimPtr = __hadd(*outSimPtr, TSimRefine(fsimInvertedFiltered));
-    //*outSimPtr = __hadd(*outSimPtr, __float2half(fsimInvertedFiltered));
+    *outSimPtr = __hadd(*outSimPtr, TSimRefine(fsimInvertedFiltered));
+    *outSimPtr = __hadd(*outSimPtr, __float2half(fsimInvertedFiltered));
     *outSimPtr = __float2half(__half2float(*outSimPtr) + fsimInvertedFiltered); // perform the addition in float
 #else
     *outSimPtr += TSimRefine(fsimInvertedFiltered);

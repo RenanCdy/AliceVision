@@ -18,8 +18,8 @@
 namespace aliceVision {
 namespace depthMap {
 
-void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<sycl::float2, 2>& out_depthSimMap_dmp,
-                                   const CudaDeviceMemoryPitched<sycl::float2, 2>& in_depthSimMap_dmp, float defaultSim,
+void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<float2, 2>& out_depthSimMap_dmp,
+                                   const CudaDeviceMemoryPitched<float2, 2>& in_depthSimMap_dmp, float defaultSim,
                                    DeviceStream& stream)
 try {
     // get output map dimensions
@@ -63,8 +63,8 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-void cuda_normalMapUpscale(CudaDeviceMemoryPitched<sycl::float3, 2>& out_upscaledMap_dmp,
-                           const CudaDeviceMemoryPitched<sycl::float3, 2>& in_map_dmp, const ROI& roi,
+void cuda_normalMapUpscale(CudaDeviceMemoryPitched<float3, 2>& out_upscaledMap_dmp,
+                           const CudaDeviceMemoryPitched<float3, 2>& in_map_dmp, const ROI& roi,
                            DeviceStream& stream)
 try {
     // compute upscale ratio
@@ -97,7 +97,7 @@ try {
             cgh.parallel_for(sycl::nd_range<3>(grid * block, block),
                              [=](sycl::nd_item<3> item_ct1)
                              {
-                                 mapUpscale_kernel<sycl::float3>(
+                                 mapUpscale_kernel<custom_sycl::custom_float3>(
                                     out_upscaledMap_dmp_acc, in_map_dmp_acc,
                                      //out_upscaledMap_dmp_getBuffer_ct0, out_upscaledMap_dmp_getPitch_ct1,
                                      //in_map_dmp_getBuffer_ct2, in_map_dmp_getPitch_ct3, 
@@ -109,7 +109,7 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-void cuda_depthThicknessSmoothThickness(CudaDeviceMemoryPitched<sycl::float2, 2>& inout_depthThicknessMap_dmp,
+void cuda_depthThicknessSmoothThickness(CudaDeviceMemoryPitched<float2, 2>& inout_depthThicknessMap_dmp,
                                         const SgmParams& sgmParams, const RefineParams& refineParams, const ROI& roi,
                                         DeviceStream& stream)
 try {
@@ -155,8 +155,8 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<sycl::float2, 2>& out_upscaledDepthPixSizeMap_dmp,
-                                            const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthThicknessMap_dmp,
+void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<float2, 2>& out_upscaledDepthPixSizeMap_dmp,
+                                            const CudaDeviceMemoryPitched<float2, 2>& in_sgmDepthThicknessMap_dmp,
                                             const int rcDeviceCameraParamsId,
                                             const DeviceMipmapImage& rcDeviceMipmapImage,
                                             const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)
@@ -264,8 +264,8 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-void cuda_depthSimMapComputeNormal(CudaDeviceMemoryPitched<sycl::float3, 2>& out_normalMap_dmp,
-                                   const CudaDeviceMemoryPitched<sycl::float2, 2>& in_depthSimMap_dmp,
+void cuda_depthSimMapComputeNormal(CudaDeviceMemoryPitched<float3, 2>& out_normalMap_dmp,
+                                   const CudaDeviceMemoryPitched<float2, 2>& in_depthSimMap_dmp,
                                    const int rcDeviceCameraParamsId, const int stepXY, const ROI& roi,
                                    DeviceStream& stream)
 try {
@@ -309,11 +309,11 @@ try {
     RETHROW_SYCL_EXCEPTION(e);
 }
 
-void cuda_depthSimMapOptimizeGradientDescent(CudaDeviceMemoryPitched<sycl::float2, 2>& out_optimizeDepthSimMap_dmp,
+void cuda_depthSimMapOptimizeGradientDescent(CudaDeviceMemoryPitched<float2, 2>& out_optimizeDepthSimMap_dmp,
                                              CudaDeviceMemoryPitched<float, 2>& inout_imgVariance_dmp,
                                              CudaDeviceMemoryPitched<float, 2>& inout_tmpOptDepthMap_dmp,
-                                             const CudaDeviceMemoryPitched<sycl::float2, 2>& in_sgmDepthPixSizeMap_dmp,
-                                             const CudaDeviceMemoryPitched<sycl::float2, 2>& in_refineDepthSimMap_dmp,
+                                             const CudaDeviceMemoryPitched<float2, 2>& in_sgmDepthPixSizeMap_dmp,
+                                             const CudaDeviceMemoryPitched<float2, 2>& in_refineDepthSimMap_dmp,
                                              const int rcDeviceCameraParamsId,
                                              const DeviceMipmapImage& rcDeviceMipmapImage,
                                              const RefineParams& refineParams, const ROI& roi, DeviceStream& stream)

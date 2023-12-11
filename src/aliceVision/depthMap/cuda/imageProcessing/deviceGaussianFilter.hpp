@@ -14,6 +14,8 @@
 namespace aliceVision {
 namespace depthMap {
 
+class DeviceStream;
+
 #define MAX_CONSTANT_GAUSS_SCALES   10
 #define MAX_CONSTANT_GAUSS_MEM_SIZE 128
 
@@ -44,7 +46,7 @@ extern void cuda_createConstantGaussianArray(int cudaDeviceId, int scales);
  */
 extern void cuda_gaussianBlurVolumeZ(CudaDeviceMemoryPitched<float, 3>& inout_volume_dmp, 
                                      int gaussRadius, 
-                                     cudaStream_t stream);
+                                     DeviceStream& stream);
 
 /**
  * @brief Apply a Gaussion blur to the XYZ axis of the given volume.
@@ -54,7 +56,7 @@ extern void cuda_gaussianBlurVolumeZ(CudaDeviceMemoryPitched<float, 3>& inout_vo
  */
 extern void cuda_gaussianBlurVolumeXYZ(CudaDeviceMemoryPitched<float, 3>& inout_volume_dmp, 
                                        int gaussRadius, 
-                                       cudaStream_t stream);
+                                       DeviceStream& stream);
 
 /**
  * @brief Apply a Median filter to the given image.

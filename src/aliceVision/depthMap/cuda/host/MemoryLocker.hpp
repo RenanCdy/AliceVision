@@ -1,5 +1,6 @@
 
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
+#include <aliceVision/depthMap/cuda/device/customDataType.dp.hpp>
 #include <sycl/sycl.hpp>
 
 namespace aliceVision
@@ -11,23 +12,25 @@ template <typename T>
 struct sycl_type_mapper {using type = T;};
 
 template <> struct sycl_type_mapper<CudaRGBA>   { using type = sycl::ushort4; };
+template <> struct sycl_type_mapper<float2> { using type = sycl::float2; };
+template <> struct sycl_type_mapper<float3> { using type = custom_sycl::custom_float3; };
 
 template <typename Type, unsigned Dim=2, typename SyclType = typename sycl_type_mapper<Type>::type>
 class BufferLocker
 {
 public:
     BufferLocker(CudaDeviceMemoryPitched<Type, Dim>& deviceMemory)
-        : m_deviceMemory(deviceMemory)
+        : m_deviceMemoryPtr(&deviceMemory)
     {
         assert(sizeof(Type) == sizeof(SyclType));
-
-        m_hostMemory.allocate(m_deviceMemory.getSize());
-        m_hostMemory.copyFrom(m_deviceMemory, 0);
-        m_range = std::make_shared<sycl::range<Dim>>( make_range<Dim>(m_hostMemory) );
+        m_hostMemory.allocate(m_deviceMemoryPtr->getSize());
+        m_hostMemory.copyFrom(*m_deviceMemoryPtr, 0);
+        m_range = std::make_shared<sycl::range<Dim>>(make_range<Dim>(m_hostMemory));
         assert(m_hostMemory.getPitch() % sizeof(Type) == 0);
         sycl::range<Dim> bufferRange = make_buffer_range<Dim>(m_hostMemory);
         m_buffer = std::make_shared<sycl::buffer<SyclType, Dim>>(
             reinterpret_cast<SyclType*>(m_hostMemory.getBytePtr()), bufferRange);
+    
         
     }
 
@@ -36,16 +39,38 @@ public:
     {     
         m_cudaBufferIsConst = true;
     }
-
-
-    ~BufferLocker()
-    {
-        if (!m_cudaBufferIsConst)
-        {
-            m_deviceMemory.copyFrom(m_hostMemory, 0);
+    
+    // Constructor to handle a potential nullptr
+    BufferLocker(const CudaDeviceMemoryPitched<Type, Dim>* deviceMemoryPtr) 
+        : m_deviceMemoryPtr(const_cast<CudaDeviceMemoryPitched<Type, Dim>*>(deviceMemoryPtr)){
+        if (deviceMemoryPtr != nullptr) {
+            assert(sizeof(Type) == sizeof(SyclType));
+            m_hostMemory.allocate(m_deviceMemoryPtr->getSize());
+            m_hostMemory.copyFrom(*m_deviceMemoryPtr, 0);
+            m_range = std::make_shared<sycl::range<Dim>>(make_range<Dim>(m_hostMemory));
+            assert(m_hostMemory.getPitch() % sizeof(Type) == 0);
+            sycl::range<Dim> bufferRange = make_buffer_range<Dim>(m_hostMemory);
+            m_buffer = std::make_shared<sycl::buffer<SyclType, Dim>>(
+            reinterpret_cast<SyclType*>(m_hostMemory.getBytePtr()), bufferRange);
+    
+        } else {
+            // Handle the null case
+            m_isEmpty = true;
+            // Create an empty buffer with zero range in each dimension
+            sycl::range<Dim> emptyRange(1,1); // Use (1) to avoid zero-sized range which might be problematic
+            m_buffer = std::make_shared<sycl::buffer<SyclType, Dim>>(emptyRange);
         }
     }
 
+    ~BufferLocker()
+    {
+        // if (!m_cudaBufferIsConst)
+        // {
+        //     m_deviceMemoryPtr->copyFrom(m_hostMemory, 0);
+        // }
+    }
+
+    bool isEmpty() const { return m_isEmpty; }
 
     sycl::range<Dim>& range() { return *m_range; }
     sycl::buffer<SyclType, Dim>& buffer() { return *m_buffer; }
@@ -77,11 +102,14 @@ private:
         return sycl::range<3>(hostMemory.getSize().z(), hostMemory.getSize().y(), hostMemory.getPitch() / sizeof(Type));
     }
 
-    CudaDeviceMemoryPitched<Type, Dim>& m_deviceMemory;
+    CudaDeviceMemoryPitched<Type, Dim>* m_deviceMemoryPtr; // Now a pointer
+    //CudaDeviceMemoryPitched<Type, Dim>& m_deviceMemory;
+    //static CudaDeviceMemoryPitched<Type, Dim> dummyDeviceMemory; // Dummy object for nullptr init
     CudaHostMemoryHeap<Type, Dim> m_hostMemory;
     std::shared_ptr<sycl::range<Dim>> m_range;
     std::shared_ptr<sycl::buffer<SyclType, Dim>> m_buffer;
     bool m_cudaBufferIsConst = false;
+    bool m_isEmpty = false;
 };
 
 

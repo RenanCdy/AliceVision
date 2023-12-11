@@ -11,6 +11,7 @@
 #include <aliceVision/depthMap/cuda/device/Patch.dp.hpp>
 #include <aliceVision/depthMap/cuda/planeSweeping/similarity.hpp>
 #include <aliceVision/depthMap/cuda/device/DeviceCameraParams.dp.hpp>
+#include <aliceVision/depthMap/cuda/device/customDataType.dp.hpp>
 
 namespace aliceVision {
 namespace depthMap {
@@ -469,8 +470,8 @@ adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 void volume_refineSimilarity_kernel(
     sycl::accessor<TSimRefine, 3, sycl::access::mode::read_write> inout_volSim_d,
-    sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_sgmDepthPixSizeMap_d,
-    sycl::accessor<sycl::float3, 2, sycl::access::mode::read> in_sgmNormalMap_d,
+    const sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_sgmDepthPixSizeMap_d,
+    sycl::accessor<custom_sycl::custom_float3, 2, sycl::access::mode::read> in_sgmNormalMap_d,
     //TSimRefine* inout_volSim_d, int inout_volSim_s, int inout_volSim_p, 
     //const sycl::float2* in_sgmDepthPixSizeMap_d, const int in_sgmDepthPixSizeMap_p, 
     //const sycl::float3* in_sgmNormalMap_d, const int in_sgmNormalMap_p,
@@ -554,7 +555,10 @@ void volume_refineSimilarity_kernel(
 
       if(!in_sgmNormalMapPtr_is_null) // initialize patch normal from input normal map
       {
-        patch.n = get2DBufferAt(in_sgmNormalMap_d, vx, vy);
+        // TODO: not optimized to float3
+        auto& temp = get2DBufferAt(in_sgmNormalMap_d, vx, vy);
+        patch.n = sycl::vec<float, 3>(temp[0], temp[1], temp[2]);
+        //patch.n = get2DBufferAt(in_sgmNormalMap_d, vx, vy);
       }
       else // initialize patch normal from v1 & v2
       {
@@ -618,7 +622,7 @@ void volume_refineSimilarity_kernel(
              fsimInvertedFiltered)}
             .convert<sycl::half, sycl::rounding_mode::automatic>()[0]; // perform the addition in float
 #else
-    outSimPtr += TSimRefine(fsimInvertedFiltered);
+   outSimPtr += TSimRefine(fsimInvertedFiltered);
 #endif
 }
 

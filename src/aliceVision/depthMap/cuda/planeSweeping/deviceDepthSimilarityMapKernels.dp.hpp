@@ -12,6 +12,7 @@
 #include "aliceVision/depthMap/cuda/device/Patch.dp.hpp"
 #include "aliceVision/depthMap/cuda/device/eig33.dp.hpp"
 #include <aliceVision/depthMap/cuda/device/DeviceCameraParams.hpp>
+#include <aliceVision/depthMap/cuda/device/customDataType.dp.hpp>
 
 // compute per pixel pixSize instead of using Sgm depth thickness
 //#define ALICEVISION_DEPTHMAP_COMPUTE_PIXSIZEMAP
@@ -413,7 +414,7 @@ void computeSgmUpscaledDepthPixSizeMap_bilinear_kernel(
 }
 
 template <int TWsh>
-void depthSimMapComputeNormal_kernel(sycl::accessor<sycl::float3, 2, sycl::access::mode::write> out_normalMap_d,
+void depthSimMapComputeNormal_kernel(sycl::accessor<custom_sycl::custom_float3, 2, sycl::access::mode::write> out_normalMap_d,
                                      sycl::accessor<sycl::float2, 2, sycl::access::mode::read> in_depthSimMap_d,
                                      //sycl::float3* out_normalMap_d, int out_normalMap_p,
                                      //const sycl::float2* in_depthSimMap_d, int in_depthSimMap_p,
@@ -441,12 +442,12 @@ void depthSimMapComputeNormal_kernel(sycl::accessor<sycl::float3, 2, sycl::acces
     const float in_depth = get2DBufferAt(in_depthSimMap_d, roiX, roiY).x(); // use only depth
 
     // corresponding output normal
-    sycl::float3& out_normal = get2DBufferAt(out_normalMap_d, roiX, roiY);
+    auto& out_normal = get2DBufferAt(out_normalMap_d, roiX, roiY);
 
     // no depth
     if(in_depth <= 0.0f)
     {
-        out_normal = {-1.f, -1.f, -1.f};
+        out_normal = custom_sycl::custom_float3{-1.f, -1.f, -1.f};
         return;
     }
 
@@ -486,7 +487,7 @@ void depthSimMapComputeNormal_kernel(sycl::accessor<sycl::float3, 2, sycl::acces
 
     if(!s3d.computePlaneByPCA(pp, nn))
     {
-        out_normal = {-1.f, -1.f, -1.f};
+        out_normal = custom_sycl::custom_float3{-1.f, -1.f, -1.f};
         return;
     }
 
