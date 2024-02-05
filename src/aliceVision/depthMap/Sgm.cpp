@@ -136,7 +136,7 @@ void Sgm::sgmRc(const Tile& tile, const SgmDepthList& tileDepthList)
 
     // export intermediate volume information (if requested by user)
     exportVolumeInformation(tile, tileDepthList, _volumeSecBestSim_dmp, "beforeFiltering");
-
+    
     // this is here for experimental purposes
     // to show how SGGC work on non optimized depthmaps
     // it must equals to true in normal case

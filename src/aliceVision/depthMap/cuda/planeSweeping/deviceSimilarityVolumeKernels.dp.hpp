@@ -87,6 +87,17 @@ and may cause high register pressure. Consult with your hardware vendor to find 
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 void volume_computeSimilarity_kernel(
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_rc,
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_tc,
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_p,
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_n,
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_x,
+    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_y,
+    sycl::accessor<float, 1, sycl::access::mode::write> out_patch_d,
+    sycl::accessor<sycl::uint3, 1, sycl::access::mode::write> out_patch_roi,
+    sycl::accessor<float, 1, sycl::access::mode::write> out_patch_depth,
+    sycl::accessor<sycl::float2, 1, sycl::access::mode::write> out_patch_xy,
+
     sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume1st_d,
     sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume2nd_d,
     sycl::accessor<float, 2, sycl::access::mode::read> in_depths_d,
@@ -109,6 +120,14 @@ void volume_computeSimilarity_kernel(
     const unsigned int roiX = item_ct1.get_group(2) * item_ct1.get_local_range(2) + item_ct1.get_local_id(2);
     const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
     const unsigned int roiZ = item_ct1.get_group(0);
+    
+    out_patch_rc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    out_patch_tc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
+    out_patch_x[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    out_patch_y[item_ct1.get_global_linear_id()] = -42.0;
+    out_patch_depth[item_ct1.get_global_linear_id()] = -42.0;
+    out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(-42.0, -42.0);
 
     if(roiX >= roi.width() || roiY >= roi.height()) // no need to check roiZ
         return;
@@ -132,12 +151,23 @@ void volume_computeSimilarity_kernel(
     // compute patch
     Patch patch;
     volume_computePatch(patch, rcDeviceCamParams, tcDeviceCamParams, depthPlane, sycl::float2(x, y));
-
+    
+    
+    out_patch_rc[item_ct1.get_global_linear_id()] = rcDeviceCamParams.C;
+    out_patch_tc[item_ct1.get_global_linear_id()] = tcDeviceCamParams.C;
+    out_patch_p[item_ct1.get_global_linear_id()] = patch.p;
+    out_patch_n[item_ct1.get_global_linear_id()] = patch.n;
+    out_patch_x[item_ct1.get_global_linear_id()] = patch.x;
+    out_patch_y[item_ct1.get_global_linear_id()] = patch.y;
+    out_patch_d[item_ct1.get_global_linear_id()] = patch.d;
+    out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
+    out_patch_depth[item_ct1.get_global_linear_id()] = depthPlane;
+    out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(x, y);
     // we do not need positive and filtered similarity values
     constexpr bool invertAndFilter = false;
 
-    float fsim = sycl::bit_cast<float, int>(0x7f800000U);
-
+    std::pair<float,bool> fsim = std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true);
+    
     // compute patch similarity
     if(useCustomPatchPattern)
     {
@@ -176,9 +206,9 @@ void volume_computeSimilarity_kernel(
                                                  patch);
     }
 
-    if(fsim == sycl::bit_cast<float, int>(0x7f800000U)) // invalid similarity
+    if(fsim.second) // invalid similarity
     {
-      fsim = 255.0f; // 255 is the invalid similarity value
+      fsim.first = 255.0f; // 255 is the invalid similarity value
     }
     else // valid similarity
     {
@@ -187,30 +217,30 @@ void volume_computeSimilarity_kernel(
       constexpr const float fmaxVal = 1.0f;
       constexpr const float fmultiplier = 1.0f / (fmaxVal - fminVal);
 
-      fsim = (fsim - fminVal) * fmultiplier;
+      fsim.first = (fsim.first - fminVal) * fmultiplier;
 
 #ifdef TSIM_USE_FLOAT
       // no clamp
 #else
-      fsim = sycl::fmin(1.0f, sycl::fmax(0.0f, fsim));
+      fsim.first = sycl::fmin(1.0f, sycl::fmax(0.0f, fsim.first));
 #endif
       // convert from (0, 1) to (0, 254)
       // needed to store in the volume in uchar
       // 255 is reserved for the similarity initialization, i.e. undefined values
-      fsim *= 254.0f;
+      fsim.first *= 254.0f;
     }
 
     TSim& fsim_1st = get3DBufferAt(out_volume1st_d, size_t(vx), size_t(vy), size_t(vz));
     TSim& fsim_2nd = get3DBufferAt(out_volume2nd_d, size_t(vx), size_t(vy), size_t(vz));
 
-    if(fsim < fsim_1st)
+    if(fsim.first < fsim_1st)
     {
         fsim_2nd = fsim_1st;
-        fsim_1st = TSim(fsim);
+        fsim_1st = TSim(fsim.first);
     }
-    else if(fsim < fsim_2nd)
+    else if(fsim.first < fsim_2nd)
     {
-        fsim_2nd = TSim(fsim);
+        fsim_2nd = TSim(fsim.first);
     }
 }
 
@@ -573,7 +603,7 @@ void volume_refineSimilarity_kernel(
     // we need positive and filtered similarity values
     constexpr bool invertAndFilter = true;
 
-    float fsimInvertedFiltered = sycl::bit_cast<float, int>(0x7f800000U);
+    std::pair<float,bool> fsimInvertedFiltered = std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true);
 
     // compute similarity
     if(useCustomPatchPattern)
@@ -602,7 +632,7 @@ void volume_refineSimilarity_kernel(
                                                                  patch);
     }
 
-    if(fsimInvertedFiltered == sycl::bit_cast<float, int>(0x7f800000U)) // invalid similarity
+    if(fsimInvertedFiltered.second) // invalid similarity
     {
         // do nothing
         return;
@@ -619,10 +649,10 @@ void volume_refineSimilarity_kernel(
     outSimPtr =
         sycl::vec<float, 1>{
             (sycl::vec<sycl::half, 1>{static_cast<sycl::half>(outSimPtr)}.convert<float, sycl::rounding_mode::automatic>()[0] +
-             fsimInvertedFiltered)}
+             fsimInvertedFiltered.first)}
             .convert<sycl::half, sycl::rounding_mode::automatic>()[0]; // perform the addition in float
 #else
-   outSimPtr += TSimRefine(fsimInvertedFiltered);
+   outSimPtr += TSimRefine(fsimInvertedFiltered.first);
 #endif
 }
 

@@ -20,6 +20,79 @@ namespace depthMap {
 
 __host__ void writeDeviceImage(const CudaDeviceMemoryPitched<CudaRGBA, 2>& in_img_dmp, const std::string& path);
 
+template<int TRadius>
+__global__ void createMipmappedArrayLevel_kernel(cudaSurfaceObject_t out_currentLevel_surf,
+                                                 cudaTextureObject_t in_previousLevel_tex,
+                                                 unsigned int width,
+                                                 unsigned int height)
+{
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x >= width || y >= height)
+        return;
+
+    const float px = 1.f / float(width);
+    const float py = 1.f / float(height);
+
+    float4 sumColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float sumFactor = 0.0f;
+
+#pragma unroll
+    for(int i = -TRadius; i <= TRadius; i++)
+    {
+
+#pragma unroll
+        for(int j = -TRadius; j <= TRadius; j++)
+        {
+            // domain factor
+            const float factor = getGauss(1, i + TRadius) * getGauss(1, j + TRadius);
+
+            // normalized coordinates
+            const float u = (x + j + 0.5f) * px;
+            const float v = (y + i + 0.5f) * py;
+
+            // current pixel color
+            const float4 color = tex2D_float4(in_previousLevel_tex, u, v);
+
+            // sum color
+            sumColor = sumColor + color * factor;
+
+            // sum factor
+            sumFactor += factor;
+        }
+    }
+
+    const float4 color = sumColor / sumFactor;
+
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+    // convert color to unsigned char
+    CudaRGBA out;
+    out.x = CudaColorBaseType(color.x);
+    out.y = CudaColorBaseType(color.y);
+    out.z = CudaColorBaseType(color.z);
+    out.w = CudaColorBaseType(color.w);
+
+    // write output color
+    surf2Dwrite(out, out_currentLevel_surf, int(x * sizeof(CudaRGBA)), int(y));
+#else // texture use float4 or half4
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
+    // convert color to half
+    CudaRGBA out;
+    out.x = __float2half(color.x);
+    out.y = __float2half(color.y);
+    out.z = __float2half(color.z);
+    out.w = __float2half(color.w);
+
+    // write output color
+    // note: surf2Dwrite cannot write half directly
+    surf2Dwrite(*(reinterpret_cast<ushort4*>(&(out))), out_currentLevel_surf, int(x * sizeof(ushort4)), int(y));
+#else // texture use float4
+     // write output color
+    surf2Dwrite(color, out_currentLevel_surf, int(x * sizeof(float4)), int(y));
+#endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
+#endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+}
 
 
 __global__ void createMipmappedArrayDebugFlatImage_kernel(CudaRGBA* out_flatImage_d, int out_flatImage_p,
@@ -118,11 +191,133 @@ __global__ void checkMipmapLevel(cudaTextureObject_t tex,
     float4 texValue = _tex2DLod<float4>(tex, (float)x-10, width, (float)y-10, height, level);
 
     CudaRGBA value;
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+    value.x = CudaColorBaseType( texValue.x );
+    value.y = CudaColorBaseType( texValue.y );
+    value.z = CudaColorBaseType( texValue.z );
+    value.w = CudaColorBaseType( texValue.w );
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
     value.x = __float2half( texValue.x );
     value.y = __float2half( texValue.y );
     value.z = __float2half( texValue.z );
     value.w = __float2half( texValue.w );
+#endif
+#endif
     buffer[y*buffer_pitch + x] = value;
+}
+
+__host__ void cuda_createMipmappedArrayFromImage(cudaMipmappedArray_t* out_mipmappedArrayPtr,
+    const CudaDeviceMemoryPitched<CudaRGBA, 2>& in_img_dmp,
+    const unsigned int levels)
+{
+    const CudaSize<2>& in_imgSize = in_img_dmp.getSize();
+    const cudaExtent imgSize = make_cudaExtent(in_imgSize.x(), in_imgSize.y(), 0);
+
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
+    const cudaChannelFormatDesc desc = cudaCreateChannelDescHalf4();
+#else
+    const cudaChannelFormatDesc desc = cudaCreateChannelDesc<CudaRGBA>();
+#endif
+
+    // allocate CUDA mipmapped array
+    CHECK_CUDA_RETURN_ERROR(cudaMallocMipmappedArray(out_mipmappedArrayPtr, &desc, imgSize, levels));
+
+    // get mipmapped array at level 0
+    cudaArray_t level0;
+    CHECK_CUDA_RETURN_ERROR(cudaGetMipmappedArrayLevel(&level0, *out_mipmappedArrayPtr, 0));
+
+    // copy input image buffer into mipmapped array at level 0
+    cudaMemcpy3DParms copyParams = {0};
+    copyParams.srcPtr.ptr = (void *)in_img_dmp.getBytePtr();
+    copyParams.srcPtr.pitch = in_img_dmp.getPitch();
+    copyParams.srcPtr.xsize = in_img_dmp.getUnitsInDim(0);
+    copyParams.srcPtr.ysize = in_img_dmp.getUnitsInDim(1);
+    copyParams.dstArray = level0;
+    copyParams.extent = imgSize;
+    copyParams.extent.depth = 1;
+    copyParams.kind = cudaMemcpyDeviceToDevice;
+    CHECK_CUDA_RETURN_ERROR(cudaMemcpy3D(&copyParams));
+
+    // initialize each mipmapped array level from level 0
+    size_t width  = in_imgSize.x();
+    size_t height = in_imgSize.y();
+
+    for(size_t l = 1; l < levels; ++l)
+    {
+        // current level width/height
+        width  /= 2;
+        height /= 2;
+
+        // previous level array (or level 0)
+        cudaArray_t previousLevelArray;
+        CHECK_CUDA_RETURN_ERROR(cudaGetMipmappedArrayLevel(&previousLevelArray, *out_mipmappedArrayPtr, l - 1));
+
+        // current level array
+        cudaArray_t currentLevelArray;
+        CHECK_CUDA_RETURN_ERROR(cudaGetMipmappedArrayLevel(&currentLevelArray, *out_mipmappedArrayPtr, l));
+
+        // check current level array size
+        cudaExtent currentLevelArraySize;
+        CHECK_CUDA_RETURN_ERROR(cudaArrayGetInfo(nullptr, &currentLevelArraySize, nullptr, currentLevelArray));
+
+        assert(currentLevelArraySize.width  == width);
+        assert(currentLevelArraySize.height == height);
+        assert(currentLevelArraySize.depth  == 0);
+
+        // generate texture object for previous level reading
+        cudaTextureObject_t previousLevel_tex;
+        {
+            cudaResourceDesc texRes;
+            memset(&texRes, 0, sizeof(cudaResourceDesc));
+            texRes.resType = cudaResourceTypeArray;
+            texRes.res.array.array = previousLevelArray;
+
+            cudaTextureDesc texDescr;
+            memset(&texDescr, 0, sizeof(cudaTextureDesc));
+            texDescr.normalizedCoords = 1;
+            texDescr.filterMode = cudaFilterModeLinear;
+            texDescr.addressMode[0] = cudaAddressModeClamp;
+            texDescr.addressMode[1] = cudaAddressModeClamp;
+            texDescr.addressMode[2] = cudaAddressModeClamp;
+            #ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+            texDescr.readMode = cudaReadModeNormalizedFloat;
+            #else
+            texDescr.readMode = cudaReadModeElementType;
+            #endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+
+
+            CHECK_CUDA_RETURN_ERROR(cudaCreateTextureObject(&previousLevel_tex, &texRes, &texDescr, nullptr));
+        }
+
+        // generate surface object for current level writing
+        cudaSurfaceObject_t currentLevel_surf;
+        {
+            cudaResourceDesc surfRes;
+            memset(&surfRes, 0, sizeof(cudaResourceDesc));
+            surfRes.resType = cudaResourceTypeArray;
+            surfRes.res.array.array = currentLevelArray;
+
+            CHECK_CUDA_RETURN_ERROR(cudaCreateSurfaceObject(&currentLevel_surf, &surfRes));
+        }
+
+        // downscale previous level image into the current level image
+        {
+            const dim3 block(16, 16, 1);
+            const dim3 grid(divUp(width, block.x), divUp(height, block.y), 1);
+
+            createMipmappedArrayLevel_kernel<2 /* radius */><<<grid, block>>>(currentLevel_surf, previousLevel_tex, (unsigned int)(width), (unsigned int)(height));
+        }
+
+        // wait for kernel completion
+        // device has completed all preceding requested tasks
+        CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
+        CHECK_CUDA_ERROR();
+
+        // destroy temporary CUDA objects
+        CHECK_CUDA_RETURN_ERROR(cudaDestroySurfaceObject(currentLevel_surf));
+        CHECK_CUDA_RETURN_ERROR(cudaDestroyTextureObject(previousLevel_tex));
+    }
 }
 
 __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappedArray_texPtr,
@@ -160,7 +355,7 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 #endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
 
     CHECK_CUDA_RETURN_ERROR(cudaCreateTextureObject(out_mipmappedArray_texPtr, &resDescr, &texDescr, nullptr));
-/*
+
     // Code to check texture sampling
     const dim3 block(16, 16, 1);
     {
@@ -175,7 +370,7 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_0_" << s_idx++ << ".png";
+        ss << "mipmap_0_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
 
@@ -191,7 +386,7 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_1_" << s_idx++ << ".png";
+        ss << "mipmap_1_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
 
@@ -207,7 +402,7 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_1.8_" << s_idx++ << ".png";
+        ss << "mipmap_1.8_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
 
@@ -223,7 +418,7 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_2_" << s_idx++ << ".png";
+        ss << "mipmap_2_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
 
@@ -239,13 +434,13 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_3_" << s_idx++ << ".png";
+        ss << "mipmap_3_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
 
     {
         CudaSize<2> size(in_mipmappedArray.getSize().x()/16, (in_mipmappedArray.getSize().y()*2)/3/16);
-        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size) );
+        CudaDeviceMemoryPitched<CudaRGBA, 2> diff(size);
         
         const dim3 grid(divUp(size.x(), block.x), divUp(size.y(), block.y), 1);
         checkMipmapLevel<<<grid, block>>>(*out_mipmappedArray_texPtr, diff.getBuffer(), diff.getPitch() / sizeof(CudaRGBA), size.x(), size.y(), 4);
@@ -255,10 +450,10 @@ __host__ void cuda_createMipmappedArrayTexture(cudaTextureObject_t* out_mipmappe
 
         std::stringstream ss;
         static int s_idx = 0;
-        ss << "mipmap_4_" << s_idx++ << ".png";
+        ss << "mipmap_4_" << s_idx++ << ".jpg";
         writeDeviceImage(diff, ss.str());
     }
-*/
+
 }
 
 __host__ void cuda_createMipmappedArrayDebugFlatImage(CudaDeviceMemoryPitched<CudaRGBA, 2>& out_flatImage_dmp,

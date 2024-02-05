@@ -100,7 +100,7 @@ extern void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& 
                                         const RefineParams& refineParams, 
                                         const Range& depthRange,
                                         const ROI& roi,
-                                        DeviceStream& stream);
+                                        cudaStream_t stream);
 
 /**
  * @brief Filter / Optimize the given similarity volume
@@ -124,7 +124,7 @@ extern void cuda_volumeOptimize(CudaDeviceMemoryPitched<TSim, 3>& out_volSimFilt
                                 const SgmParams& sgmParams, 
                                 const int lastDepthIndex,
                                 const ROI& roi,
-                                DeviceStream& stream);
+                                cudaStream_t stream);
 
 /**
  * @brief Retrieve the best depth/sim in the given similarity volume.
@@ -146,7 +146,7 @@ extern void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<float2, 2>& out
                                          const SgmParams& sgmParams, 
                                          const Range& depthRange,
                                          const ROI& roi, 
-                                         DeviceStream& stream);
+                                         cudaStream_t stream);
 
 /**
  * @brief Retrieve the best depth/sim in the given refined similarity volume.
@@ -163,7 +163,7 @@ extern void cuda_volumeRefineBestDepth(CudaDeviceMemoryPitched<float2, 2>& out_r
                                        const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volSim_dmp, 
                                        const RefineParams& refineParams, 
                                        const ROI& roi, 
-                                       DeviceStream& stream);
+                                       cudaStream_t stream);
 
 } // namespace depthMap
 } // namespace aliceVision

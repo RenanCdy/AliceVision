@@ -73,6 +73,25 @@ namespace depthMap {
         return value;                 
     }
 
+    inline sycl::float3 make_float3(const sycl::uchar4& uc)
+    { 
+        return sycl::float3(static_cast<float>(uc.x()) / 255.0f,
+                            static_cast<float>(uc.y()) / 255.0f,
+                            static_cast<float>(uc.z()) / 255.0f);
+    }
+
+    inline sycl::float3 make_float3(const sycl::float4& f)
+    { 
+        return sycl::float3(f.x(),
+                            f.y(),
+                            f.z());
+    }
+
+    inline sycl::float4 make_float4(const sycl::float4& us)
+    {
+        return us;                 
+    }
+
     inline sycl::float4 make_float4(const sycl::ushort4& us)
     {
         sycl::float4 value;
@@ -81,6 +100,14 @@ namespace depthMap {
         value[2] = sycl::detail::half2Float(us[2]);
         value[3] = sycl::detail::half2Float(us[3]);
         return value;                 
+    }
+
+    inline sycl::float4 make_float4(const sycl::uchar4& uc)
+    {
+        return sycl::float4(static_cast<float>(uc[0]) / 255.0f,
+                            static_cast<float>(uc[1]) / 255.0f,
+                            static_cast<float>(uc[2]) / 255.0f,
+                            static_cast<float>(uc[3]) / 255.0f); 
     }
 
     template <typename T, int Dims, sycl::access::mode Mode>

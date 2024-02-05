@@ -7,6 +7,7 @@
 #include "DeviceMipmapImage.hpp"
 
 #include <aliceVision/numeric/numeric.hpp>
+#include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceColorConversion.dp.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.hpp>
 #include <aliceVision/depthMap/cuda/imageProcessing/deviceGaussianFilter.dp.hpp>
@@ -58,6 +59,9 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     if(minDownscale > 1)
     {
 
+        // create full-size input image buffer texture
+        //CudaRGBATexture fullSizeImg(*img_dmpPtr); // TODO: only for CUDA
+
         // create downscaled image buffer
         const size_t downscaledWidth  = size_t(divideRoundUp(int(_width),  int(minDownscale)));
         const size_t downscaledHeight = size_t(divideRoundUp(int(_height), int(minDownscale)));
@@ -65,7 +69,7 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
 
         // downscale with gaussian blur the full-size image texture
         const int gaussianFilterRadius = minDownscale;
-        cuda_downscaleWithGaussianBlur(*downscaledImg_dmpPtr, *img_dmpPtr, minDownscale, gaussianFilterRadius, stream);
+        cuda_downscaleWithGaussianBlur(*downscaledImg_dmpPtr, *img_dmpPtr, minDownscale, gaussianFilterRadius, (sycl::queue&)stream);
 
         // wait for downscale kernel completion
         CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
@@ -78,7 +82,7 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     }
 
     // in-place color conversion into CIELAB
-    cuda_rgb2lab(*img_dmpPtr, stream);
+    cuda_rgb2lab(*img_dmpPtr, (sycl::queue&)stream);
 
     // wait for color conversion kernel completion
     CHECK_CUDA_RETURN_ERROR(cudaDeviceSynchronize());
@@ -111,29 +115,51 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     
     
     {
-        BufferLocker bl(*img_dmpPtr);
-        auto& buffer = bl.buffer();
-        auto& range = bl.range();
-        queue.submit(
-            [&buffer, &range](sycl::handler& handler)
-            {
-                auto a = buffer.get_access<sycl::access::mode::read_write>(handler);
-                handler.parallel_for(range,
-                                     [a](sycl::item<2> item)
-                                     {
-                                         auto& pixel = a[item[0]][item[1]];
-                                         sycl::float3 rgb;
-                                         constexpr float d = 1 / 255.f;
-                                         rgb[0] = sycl::detail::half2Float(pixel[0]) * d;
-                                         rgb[1] = sycl::detail::half2Float(pixel[1]) * d;
-                                         rgb[2] = sycl::detail::half2Float(pixel[2]) * d;
-                                         auto lab = xyz2lab(rgb2xyz(rgb));
-                                         pixel[0] = sycl::detail::float2Half(lab[0]);
-                                         pixel[1] = sycl::detail::float2Half(lab[1]);
-                                         pixel[2] = sycl::detail::float2Half(lab[2]);
-                                     });
-            });
-        queue.wait();
+      BufferLocker bl(*img_dmpPtr);
+      auto& buffer = bl.buffer();
+      auto& range = bl.range();
+      queue.submit([&buffer, &range](sycl::handler& handler)
+      {
+        auto a = buffer.get_access<sycl::access::mode::read_write>(handler);
+        handler.parallel_for(range,
+        [a](sycl::item<2> item)
+        {
+          auto& pixel = a[item[0]][item[1]];
+          sycl::float3 rgb;
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+          constexpr float d = 1 / 255.f;
+          rgb[0] = (float)pixel[0] * d;
+          rgb[1] = (float)pixel[1] * d;
+          rgb[2] = (float)pixel[2] * d;
+          auto lab = xyz2lab(rgb2xyz(rgb));
+          pixel[0] = lab[0];
+          pixel[1] = lab[1];
+          pixel[2] = lab[2];
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
+          constexpr float d = 1 / 255.f;
+          rgb[0] = sycl::detail::half2Float(pixel[0]) * d;
+          rgb[1] = sycl::detail::half2Float(pixel[1]) * d;
+          rgb[2] = sycl::detail::half2Float(pixel[2]) * d;
+          auto lab = xyz2lab(rgb2xyz(rgb));
+          pixel[0] = sycl::detail::float2Half(lab[0]);
+          pixel[1] = sycl::detail::float2Half(lab[1]);
+          pixel[2] = sycl::detail::float2Half(lab[2]);
+#else
+          //float4
+          constexpr float d = 1 / 255.f;
+          rgb[0] = pixel[0] * d;
+          rgb[1] = pixel[1] * d;
+          rgb[2] = pixel[2] * d;
+          auto lab = xyz2lab(rgb2xyz(rgb));
+          pixel[0] = lab[0];
+          pixel[1] = lab[1];
+          pixel[2] = lab[2];
+#endif
+#endif
+        });
+      });
+      queue.wait();
     }
     
     //writeDeviceImage(*img_dmpPtr, "C:/tmp/test.exr");
@@ -153,7 +179,6 @@ void DeviceMipmapImage::fill(const CudaHostMemoryHeap<CudaRGBA, 2>& in_img_hmh, 
     // check CUDA last error
     CHECK_CUDA_ERROR();
 }
-
 
 float DeviceMipmapImage::getLevel(unsigned int downscale) const
 {

@@ -139,8 +139,24 @@ __device__ inline float computePixSize(const DeviceCameraParams& deviceCamParams
     const float2 rp = project3DPoint(deviceCamParams.P, p);
     const float2 rp1 = rp + make_float2(1.0f, 0.0f);
 
+    const unsigned long long int threadId = threadIdx.x + blockIdx.x * blockDim.x 
+              + (threadIdx.y + blockIdx.y * blockDim.y) * gridDim.x * blockDim.x 
+              + (threadIdx.z + blockIdx.z * blockDim.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
+    
+    
     float3 refvect = M3x3mulV2(deviceCamParams.iP, rp1);
+    if(threadId==3027457){
+        printf("refvect: (%f, %f, %f)\n", refvect.x, refvect.y, refvect.z);
+    }
     normalize(refvect);
+    if(threadId==3027457){
+        printf("rp: (%f, %f)\n", rp.x, rp.y);
+        for(int i = 0; i < 12; i++) {
+            printf("deviceCamParams.P[%d]: %f\n", i, deviceCamParams.P[i]);
+        }
+        printf("p: (%f, %f, %f)\n", p.x, p.y, p.z);
+        printf("refvect: (%f, %f, %f)\n", refvect.x, refvect.y, refvect.z);
+    }
     return pointLineDistance3D(p, deviceCamParams.C, refvect);
 }
 

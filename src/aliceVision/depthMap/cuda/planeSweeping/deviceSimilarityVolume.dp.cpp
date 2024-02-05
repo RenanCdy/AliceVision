@@ -25,7 +25,7 @@ namespace depthMap {
 template<class T>
 sycl::range<3> getMaxPotentialBlockSize(T kernelFuction)
 {
-    const sycl::range<3> defaultBlock(32, 1, 1); // minimal default settings
+    const sycl::range<3> defaultBlock(1, 12, 32); // minimal default settings
 
     // TODO
     /*
@@ -147,6 +147,7 @@ try
     // kernel launch parameters
     const sycl::range<3> block = getMaxPotentialBlockSize(volume_computeSimilarity_kernel);
     const sycl::range<3> grid(depthRange.size(), divUp(roi.height(), block[1]), divUp(roi.width(), block[2]));
+    //const sycl::range<3> grid(divUp(roi.width(), block[2]), divUp(roi.height(), block[1]), depthRange.size());
 
     BufferLocker out_volBestSim_dmp_locker(out_volBestSim_dmp);
     BufferLocker out_volSecBestSim_dmp_locker(out_volSecBestSim_dmp);
@@ -154,11 +155,50 @@ try
     ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
     ImageLocker tcDeviceMipmapImage_locker(tcDeviceMipmapImage.getMipmappedArray());
 
+    size_t glob_size = (grid * block).size();
+    std::vector<sycl::float3> patches_data_rc(glob_size);
+    std::vector<sycl::float3> patches_data_tc(glob_size);
+    std::vector<sycl::float3> patches_data_p(glob_size);
+    std::vector<sycl::float3> patches_data_n(glob_size);
+    std::vector<sycl::float3> patches_data_x(glob_size);
+    std::vector<sycl::float3> patches_data_y(glob_size);
+    std::vector<float> patches_data_d(glob_size);
+    std::vector<sycl::uint3> patches_data_roi(glob_size);
+    std::vector<float> patches_data_depth(glob_size);
+    std::vector<sycl::float2> patches_data_xy(glob_size);
+
+    sycl::buffer<sycl::float3, 1> patch_buf_rc(patches_data_rc.data(), patches_data_rc.size());
+    sycl::buffer<sycl::float3, 1> patch_buf_tc(patches_data_tc.data(), patches_data_tc.size());
+    sycl::buffer<sycl::float3, 1> patch_buf_p(patches_data_p.data(), patches_data_p.size());
+    sycl::buffer<sycl::float3, 1> patch_buf_n(patches_data_n.data(), patches_data_n.size());
+    sycl::buffer<sycl::float3, 1> patch_buf_x(patches_data_x.data(), patches_data_x.size());
+    sycl::buffer<sycl::float3, 1> patch_buf_y(patches_data_y.data(), patches_data_y.size());
+    sycl::buffer<float, 1> patch_buf_d(patches_data_d.data(), patches_data_d.size());
+
+    sycl::buffer<sycl::uint3, 1> patch_buf_roi(patches_data_roi.data(), patches_data_roi.size());
+    sycl::buffer<float, 1> patch_buf_depth(patches_data_depth.data(), patches_data_depth.size());
+    sycl::buffer<sycl::float2, 1> patch_buf_xy(patches_data_xy.data(), patches_data_xy.size());
+
+    printf("ROI : {%u, %u, %u}.\n",
+        roi.width(), roi.height(), depthRange.size());
+    printf("Grid : {%zu, %zu, %zu} blocks. Blocks : {%zu, %zu, %zu} threads.\n",
+        grid[0], grid[1], grid[2], block[0], block[1], block[2]);
+
     // kernel execution
     sycl::queue& queue = (sycl::queue&)stream;
     auto volume_computeSimilarity_event = queue.submit(
         [&](sycl::handler& cgh)
         {
+            sycl::accessor patch_acc_rc(patch_buf_rc, cgh, sycl::write_only);
+            sycl::accessor patch_acc_tc(patch_buf_tc, cgh, sycl::write_only);
+            sycl::accessor patch_acc_p(patch_buf_p, cgh, sycl::write_only);
+            sycl::accessor patch_acc_n(patch_buf_n, cgh, sycl::write_only);
+            sycl::accessor patch_acc_x(patch_buf_x, cgh, sycl::write_only);
+            sycl::accessor patch_acc_y(patch_buf_y, cgh, sycl::write_only);
+            sycl::accessor patch_acc_d(patch_buf_d, cgh, sycl::write_only);
+            sycl::accessor roi_acc(patch_buf_roi, cgh, sycl::write_only);
+            sycl::accessor depth_acc(patch_buf_depth, cgh, sycl::write_only);
+            sycl::accessor xy_acc(patch_buf_xy, cgh, sycl::write_only);
             auto out_volBestSim_dmp_acc = out_volBestSim_dmp_locker.buffer().get_access<sycl::access::mode::write>(cgh);
             // auto out_volBestSim_dmp_getBuffer_ct0 = out_volBestSim_dmp.getBuffer();
             // auto out_volBestSim_dmp_getBytesPaddedUpToDim_ct1 = out_volBestSim_dmp.getBytesPaddedUpToDim(1);
@@ -194,7 +234,18 @@ try
             cgh.parallel_for(sycl::nd_range(grid * block, block),
                              [=](sycl::nd_item<3> item_ct1)
                              {
+                                //out << "volume_computeSimilarity_kernel! :" << item_ct1 << sycl::endl;
                                  volume_computeSimilarity_kernel(
+                                    patch_acc_rc,
+                                    patch_acc_tc,
+                                    patch_acc_p,
+                                    patch_acc_n,
+                                    patch_acc_x,
+                                    patch_acc_y,
+                                    patch_acc_d,
+                                    roi_acc,
+                                    depth_acc,
+                                    xy_acc,
                                      out_volBestSim_dmp_acc, 
                                      out_volSecBestSim_dmp_acc, 
                                      in_depths_dmp_acc,
@@ -215,6 +266,128 @@ try
         });
 
         volume_computeSimilarity_event.wait();
+
+        const __sycl::DeviceCameraParams& params = __sycl::cameraParametersArray_d[rcDeviceCameraParamsId];
+
+        printf("rcCam %d---\n", rcDeviceCameraParamsId);
+        printf("P: ");
+    for (int i = 0; i < 12; i++) {
+        printf("%.6f ", params.P[i]);
+    }
+    printf("\n");
+
+    printf("iP: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iP[i]);
+    }
+    printf("\n");
+
+    printf("R: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.R[i]);
+    }
+    printf("\n");
+
+    printf("iR: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iR[i]);
+    }
+    printf("\n");
+
+    printf("K: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.K[i]);
+    }
+    printf("\n");
+
+    printf("iK: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iK[i]);
+    }
+    printf("\n");
+
+    printf("C: ");
+    printf("(%f, %f, %f)\n", params.C[0], params.C[1], params.C[2]);
+
+    printf("XVect: ");
+    printf("(%f, %f, %f)\n", params.XVect[0], params.XVect[1], params.XVect[2]);
+
+    printf("YVect: ");
+    printf("(%f, %f, %f)\n", params.YVect[0], params.YVect[1], params.YVect[2]);
+
+    printf("ZVect: ");
+    printf("(%f, %f, %f)\n", params.ZVect[0], params.ZVect[1], params.ZVect[2]);
+
+        const __sycl::DeviceCameraParams& params2 = __sycl::cameraParametersArray_d[tcDeviceCameraParamsId];
+        printf("tcCam %d---\n", tcDeviceCameraParamsId);
+
+        printf("P: ");
+    for (int i = 0; i < 12; i++) {
+        printf("%.6f ", params2.P[i]);
+    }
+    printf("\n");
+
+    printf("iP: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params2.iP[i]);
+    }
+    printf("\n");
+
+    printf("R: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params2.R[i]);
+    }
+    printf("\n");
+
+    printf("iR: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params2.iR[i]);
+    }
+    printf("\n");
+
+    printf("K: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params2.K[i]);
+    }
+    printf("\n");
+
+    printf("iK: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params2.iK[i]);
+    }
+    printf("\n");
+
+    printf("C: ");
+    printf("(%f, %f, %f)\n", params2.C[0], params2.C[1], params2.C[2]);
+
+    printf("XVect: ");
+    printf("(%f, %f, %f)\n", params2.XVect[0], params2.XVect[1], params2.XVect[2]);
+
+    printf("YVect: ");
+    printf("(%f, %f, %f)\n", params2.YVect[0], params2.YVect[1], params2.YVect[2]);
+
+    printf("ZVect: ");
+    printf("(%f, %f, %f)\n", params2.ZVect[0], params2.ZVect[1], params2.ZVect[2]);
+
+        std::cout << "Patches is size: "<<glob_size<<"\n";
+
+        // Create an ofstream object
+        std::ofstream outFile;
+        std::string outputFileName = "output_" + std::to_string(rcDeviceCameraParamsId) + "_" + std::to_string(tcDeviceCameraParamsId) + ".txt";
+        outFile.open(outputFileName);
+        // Write the vectors to the file
+        for (size_t i = 0; i < glob_size; ++i) {
+        //if(patches_data_x[i].x() && patches_data_x[i].y() && patches_data_x[i].z() && patches_data_y[i])
+        outFile << i << " " << patches_data_rc[i].x() << " " << patches_data_rc[i].y() << " " << patches_data_rc[i].z() <<
+        " " << patches_data_tc[i].x() << " " << patches_data_tc[i].y() << " " << patches_data_tc[i].z() <<
+        " " << patches_data_p[i].x() << " " << patches_data_p[i].y() << " " << patches_data_p[i].z() <<
+        " " << patches_data_n[i].x() << " " << patches_data_n[i].y() << " " << patches_data_n[i].z() <<
+        " " << patches_data_x[i].x() << " " << patches_data_x[i].y() << " " << patches_data_x[i].z() << 
+        " " << patches_data_y[i].x() << " " << patches_data_y[i].y() << " " << patches_data_y[i].z() <<
+        " " << patches_data_d[i] << 
+        " " << patches_data_depth[i] << " " << patches_data_roi[i].x() << " " << patches_data_roi[i].y() << " " << patches_data_roi[i].z() << " " << patches_data_xy[i].x() << " " << patches_data_xy[i].y() << "\n";
+    }
+        outFile.close();
 }
 catch(const sycl::exception& e) {
     RETHROW_SYCL_EXCEPTION(e);

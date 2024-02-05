@@ -20,8 +20,18 @@ namespace depthMap {
 
 template <int TRadius>
 void createMipmappedArrayLevel_kernel(
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+    sycl::accessor<sycl::uchar4, 2, sycl::access::mode::write, sycl::target::device> out, sycl::id<2> currentPosition,
+    sycl::accessor<sycl::uchar4, 2, sycl::access::mode::read, sycl::target::device> in, sycl::id<2> previousPosition,
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
     sycl::accessor<sycl::ushort4, 2, sycl::access::mode::write, sycl::target::device> out, sycl::id<2> currentPosition,
     sycl::accessor<sycl::ushort4, 2, sycl::access::mode::read, sycl::target::device> in, sycl::id<2> previousPosition,
+#else
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::write, sycl::target::device> out, sycl::id<2> currentPosition,
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::target::device> in, sycl::id<2> previousPosition,
+#endif
+#endif
     unsigned int width,
     unsigned int height, 
     const sycl::nd_item<2>& item_ct1, 
@@ -69,12 +79,32 @@ void createMipmappedArrayLevel_kernel(
     const sycl::float4 color = sumColor / sumFactor;
 
 #ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
-    // TDOD
+    // TODO: Untested
+    // convert color to unsigned char
+    // write output color via accessor
+    {
+        size_t xx = x + currentPosition[0];
+        size_t yy = y + currentPosition[1];
+        out[yy][xx].x() = CudaColorBaseType(color[0]);
+        out[yy][xx].y() = CudaColorBaseType(color[1]);
+        out[yy][xx].z() = CudaColorBaseType(color[2]);
+        out[yy][xx].w() = CudaColorBaseType(color[3]);
+    }
 #else // texture use float4 or half4
 #ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
     store_half4(color, out, x + currentPosition[0], y + currentPosition[1]);
 #else // texture use float4
-    // TDOD
+    // TODO: Untested
+    // convert color to unsigned char
+    // write output color via accessor
+    {
+        size_t xx = x + currentPosition[0];
+        size_t yy = y + currentPosition[1];
+        out[yy][xx].x() = color[0];
+        out[yy][xx].y() = color[1];
+        out[yy][xx].z() = color[2];
+        out[yy][xx].w() = color[3];
+    }
 #endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
 #endif // ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
 }
@@ -90,6 +120,38 @@ cudaError_t _cudaMallocMipmappedArray(_cudaMipmappedArray_t* out_mipmappedArrayP
 
 using _cudaArray_t = struct cudaPitchedPtr;
 std::pair<sycl::buffer<sycl::ushort4,2>, sycl::id<2>> _cudaGetMipmappedArrayLevel(sycl::buffer<sycl::ushort4, 2>& mipmappedArray, int level)
+{
+    sycl::id<2> pos(0,0);
+    if (level > 0)
+    {
+        pos[1] += (mipmappedArray.get_range()[0]/3)*2;
+        int width = mipmappedArray.get_range()[1]/2;
+        for (int l=1; l < level; ++l) {
+            pos[0] += width;
+            width /= 2;
+        }
+    }
+
+    return {mipmappedArray, pos};
+}
+
+std::pair<sycl::buffer<sycl::uchar4,2>, sycl::id<2>> _cudaGetMipmappedArrayLevel(sycl::buffer<sycl::uchar4, 2>& mipmappedArray, int level)
+{
+    sycl::id<2> pos(0,0);
+    if (level > 0)
+    {
+        pos[1] += (mipmappedArray.get_range()[0]/3)*2;
+        int width = mipmappedArray.get_range()[1]/2;
+        for (int l=1; l < level; ++l) {
+            pos[0] += width;
+            width /= 2;
+        }
+    }
+
+    return {mipmappedArray, pos};
+}
+
+std::pair<sycl::buffer<sycl::float4,2>, sycl::id<2>> _cudaGetMipmappedArrayLevel(sycl::buffer<sycl::float4, 2>& mipmappedArray, int level)
 {
     sycl::id<2> pos(0,0);
     if (level > 0)
@@ -128,7 +190,15 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
     auto memsetEvent = stream.submit( [&] (sycl::handler& cgh)
     {
         auto dst = out_locker.buffer().get_access<sycl::access::mode::write>(cgh);
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+        cgh.fill(dst, sycl::uchar4(0,0,0,0));
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
         cgh.fill(dst, sycl::ushort4(0,0,0,0));
+#else
+        cgh.fill(dst, sycl::float4(0,0,0,0));
+#endif
+#endif
     });
 
     // get mipmapped array at level 0
@@ -181,9 +251,20 @@ __host__ void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipm
                 [&](sycl::handler& cgh)
                 {
                     cgh.depends_on(levelEvent);
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+                    sycl::accessor<sycl::uchar4, 2, sycl::access::mode::read> previousLevel_acc(previousLevelArray, cgh);
+                    sycl::accessor<sycl::uchar4, 2, sycl::access::mode::write> currentLevel_acc(currentLevelArray, cgh);
+
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
                     sycl::accessor<sycl::ushort4, 2, sycl::access::mode::read> previousLevel_acc(previousLevelArray, cgh);
                     sycl::accessor<sycl::ushort4, 2, sycl::access::mode::write> currentLevel_acc(currentLevelArray, cgh);
-
+#else
+                    sycl::accessor<sycl::float4, 2, sycl::access::mode::read> previousLevel_acc(previousLevelArray, cgh);
+                    sycl::accessor<sycl::float4, 2, sycl::access::mode::write> currentLevel_acc(currentLevelArray, cgh);
+#endif
+#endif
+                    
                     cgh.parallel_for(sycl::nd_range<2>(grid * block, block),
                                     [=](sycl::nd_item<2> item_ct1)
                                     {

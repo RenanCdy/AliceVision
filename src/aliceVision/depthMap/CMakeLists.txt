@@ -83,6 +83,8 @@ set(depthMap_cuda_device_sources
 
 # imageProcessing CUDA Sources
 set(depthMap_cuda_imageProcessing_sources
+  cuda/imageProcessing/deviceColorConversion.cu
+  cuda/imageProcessing/deviceColorConversion.hpp
   cuda/imageProcessing/deviceGaussianFilter.hpp
   cuda/imageProcessing/deviceGaussianFilter.cu
   cuda/imageProcessing/deviceMipmappedArray.hpp
@@ -170,7 +172,7 @@ alicevision_add_library(aliceVision_depthMap
     aliceVision_sfmDataIO
   PUBLIC_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS}
-    "/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/"
+    "/opt/intel/oneapi/compiler/2024.0/linux/compiler/include/"
 
 )
 
@@ -205,20 +207,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
 	message("Compiling Depthmap with intel compiler")
 	#string(APPEND CMAKE_CXX_FLAGS " -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend -qopenmp ")
 	#target_include_directories(aliceVision_depthMap PRIVATE "/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/")
-	include_directories("/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/")
+	include_directories("/opt/intel/oneapi/compiler/2024.0/linux/compiler/include/")
 	set(CMAKE_CUDA_HOST_COMPILER icpx)
   add_compile_options(
-    	$<$<COMPILE_LANGUAGE:C>:-fiopenmp>
-    	$<$<COMPILE_LANGUAGE:CXX>:-fiopenmp -fsycl>
-    	$<$<COMPILE_LANGUAGE:CUDA>:-allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend>
+    	$<$<COMPILE_LANGUAGE:C>:-fiopenmp -g -O0>
+    	$<$<COMPILE_LANGUAGE:CXX>:-fiopenmp -g -O0 -fsycl -ffp-model=precise>
+    	$<$<COMPILE_LANGUAGE:CUDA>:-allow-unsupported-compiler -G -g -O0 -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend -ffp-model=precise>
 	)
 
-  string(APPEND CMAKE_CXX_FLAGS " -Wno-error -fsycl")
-  string(APPEND CMAKE_C_FLAGS " -allow-unsupported-compiler -Wno-error")
-  string(APPEND CMAKE_CUDA_FLAGS " -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend ")
-  SET( CUDA_NVCC_FLAGS " ;-allow-unsupported-compiler;-fsycl;-fsycl-targets=nvptx64-nvidia-cuda;-Xsycl-target-backend;")
+  string(APPEND CMAKE_CXX_FLAGS " -g -O0 -ffp-model=precise -Wno-error -fsycl -fhonor-infinities")
+  string(APPEND CMAKE_C_FLAGS " -G -g -O0 -allow-unsupported-compiler -Wno-error -fhonor-infinities")
+  string(APPEND CMAKE_CUDA_FLAGS " -G -g -O0 -ffp-model=precise -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend -fhonor-infinities")
+  SET( CUDA_NVCC_FLAGS " -ffp-model=precise;-G;-g;-O0;-allow-unsupported-compiler;-fsycl;-fsycl-targets=nvptx64-nvidia-cuda;-Xsycl-target-backend;-fhonor-infinities;")
 
-  set(APPEND CMAKE_CUDA_FLAGS_RELEASE " -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend ")
+  set(APPEND CMAKE_CUDA_FLAGS_RELEASE "  -G -g -O0 -ffp-model=precise -allow-unsupported-compiler -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend -fhonor-infinities")
 message(STATUS "Include Directories: ${CMAKE_INCLUDE_PATH}")
 message(STATUS "CXX Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CUDA Flags: ${CUDA_NVCC_FLAGS}")

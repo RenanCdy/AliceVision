@@ -167,7 +167,7 @@ DPCT1110:2: The total declared local variable size in device function compNCCby3
 high register pressure. Consult with your hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
-inline float compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParams, const __sycl::DeviceCameraParams& tcDeviceCamParams,
+inline std::pair<float,bool> compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParams, const __sycl::DeviceCameraParams& tcDeviceCamParams,
                               const sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcMipmapImage_tex,
                               const sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> tcMipmapImage_tex,
                               const sycl::sampler sampler,
@@ -188,7 +188,7 @@ inline float compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParam
        (tp.x() > float(tcLevelWidth - 1) - dd) || (rp.y() < dd) || (rp.y() > float(rcLevelHeight - 1) - dd) ||
        (tp.y() < dd) || (tp.y() > float(tcLevelHeight - 1) - dd))
     {
-        return sycl::bit_cast<float, int>(0x7f800000U); // uninitialized
+        return std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true); // uninitialized
     }
 
     // compute inverse width / height
@@ -220,7 +220,7 @@ inline float compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParam
     // check the alpha values of the patch pixel center of the R and T cameras
     if(rcCenterColor.w() < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA || tcCenterColor.w() < ALICEVISION_DEPTHMAP_TC_MIN_ALPHA)
     {
-        return sycl::bit_cast<float, int>(0x7f800000U); // masked
+        return std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true); // masked
     }
 
     // compute patch (wsh*2+1)x(wsh*2+1)
@@ -252,6 +252,8 @@ inline float compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParam
 
             // update simStat
             sst.update(rcPatchCoordColor.x(), tcPatchCoordColor.x(), w);
+
+            //syclout << "Patch: "<< rcPatchCoordColor.x() << "," <<w << sycl::endl;
         }
     }
 
@@ -264,11 +266,11 @@ inline float compNCCby3DptsYK(const __sycl::DeviceCameraParams& rcDeviceCamParam
         // apply sigmoid see: https://www.desmos.com/calculator/skmhf1gpyf
         // best similarity value was -1, worst was 0
         // best similarity value is 1, worst is still 0
-        return sigmoid(0.0f, 1.0f, 0.7f, -0.7f, fsim);
+        return std::make_pair(sigmoid(0.0f, 1.0f, 0.7f, -0.7f, fsim),false);
     }
 
     // compute output patch similarity
-    return sst.computeWSim();
+    return std::make_pair(sst.computeWSim(),false);
 }
 
 /**
@@ -301,7 +303,7 @@ DPCT1110:3: The total declared local variable size in device function compNCCby3
 bytes and may cause high register pressure. Consult with your hardware vendor to find the total register size available
 and adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-inline float compNCCby3DptsYK_customPatchPattern(
+inline std::pair<float,bool> compNCCby3DptsYK_customPatchPattern(
     const __sycl::DeviceCameraParams& rcDeviceCamParams, const __sycl::DeviceCameraParams& tcDeviceCamParams,
     sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcMipmapImage_tex,
     sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> tcMipmapImage_tex, 
@@ -323,7 +325,7 @@ inline float compNCCby3DptsYK_customPatchPattern(
        (tp.x() > float(tcLevelWidth - 1) - dd) || (rp.y() < dd) || (rp.y() > float(rcLevelHeight - 1) - dd) ||
        (tp.y() < dd) || (tp.y() > float(tcLevelHeight - 1) - dd))
     {
-        return sycl::bit_cast<float, int>(0x7f800000U); // uninitialized
+        return std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true); // uninitialized
     }
 
     // compute inverse width / height
@@ -342,7 +344,7 @@ inline float compNCCby3DptsYK_customPatchPattern(
     // check the alpha values of the patch pixel center of the R and T cameras
     if(rcAlpha < ALICEVISION_DEPTHMAP_RC_MIN_ALPHA || tcAlpha < ALICEVISION_DEPTHMAP_TC_MIN_ALPHA)
     {
-        return sycl::bit_cast<float, int>(0x7f800000U); // masked
+        return std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true); // masked
     }
 
     // initialize R and T mipmap image level at the given mipmap image level
@@ -469,17 +471,17 @@ inline float compNCCby3DptsYK_customPatchPattern(
     // invalid patch similarity
     if(wsum == 0.f)
     {
-        return sycl::bit_cast<float, int>(0x7f800000U);
+        return std::make_pair(sycl::bit_cast<float, int>(0x7f800000U),true);
     }
 
     if(TInvertAndFilter)
     {
         // for now, we do not average
-        return fsim;
+        return std::make_pair(fsim,false);
     }
 
     // output average similarity
-    return (fsim / wsum);
+    return std::make_pair(fsim/wsum,false);
 }
 
 } // namespace depthMap

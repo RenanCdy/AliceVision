@@ -7,6 +7,7 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
+#include "customDataType.dp.hpp"
 
 namespace aliceVision {
 namespace depthMap {
@@ -24,10 +25,10 @@ struct DeviceCameraParams
     float iR[9];
     float K[9];
     float iK[9];
-    sycl::float3 C;
-    sycl::float3 XVect;
-    sycl::float3 YVect;
-    sycl::float3 ZVect;
+    custom_sycl::custom_float3 C;
+    custom_sycl::custom_float3 XVect;
+    custom_sycl::custom_float3 YVect;
+    custom_sycl::custom_float3 ZVect;
 };
 
 // global / constant data structures

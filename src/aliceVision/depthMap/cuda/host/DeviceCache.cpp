@@ -151,13 +151,67 @@ try
     CHECK_CUDA_RETURN_ERROR(err);
     THROW_ON_CUDA_ERROR(err, "Failed to copy camera parameters from host to device.");
 
+    const DeviceCameraParams& params = cameraParameters_h;
+
+    printf("Params (%u) \n",deviceCameraParamsId);
+
+    printf("P: ");
+    for (int i = 0; i < 12; i++) {
+        printf("%.6f ", params.P[i]);
+    }
+    printf("\n");
+
+    printf("iP: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iP[i]);
+    }
+    printf("\n");
+
+    printf("R: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.R[i]);
+    }
+    printf("\n");
+
+    printf("iR: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iR[i]);
+    }
+    printf("\n");
+
+    printf("K: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.K[i]);
+    }
+    printf("\n");
+
+    printf("iK: ");
+    for (int i = 0; i < 9; i++) {
+        printf("%.6f ", params.iK[i]);
+    }
+    printf("\n");
+
+    printf("C: ");
+    printf("(%f, %f, %f)\n", params.C.x, params.C.y, params.C.z);
+
+    printf("XVect: ");
+    printf("(%f, %f, %f)\n", params.XVect.x, params.XVect.y, params.XVect.z);
+
+    printf("YVect: ");
+    printf("(%f, %f, %f)\n", params.YVect.x, params.YVect.y, params.YVect.z);
+
+    printf("ZVect: ");
+    printf("(%f, %f, %f)\n", params.ZVect.x, params.ZVect.y, params.ZVect.z);
+
     if (!__sycl::cameraParametersArray_d) {
         __sycl::cameraParametersArray_d = sycl::malloc_shared<__sycl::DeviceCameraParams>(ALICEVISION_DEVICE_MAX_CONSTANT_CAMERA_PARAM_SETS, stream);
         // TODO: Where to free this one ???
     }
 
+    printf("Copying CUDA to SYCL camera params [%zu] (%zu --> %zu)\n", deviceCameraParamsId, sizeof(DeviceCameraParams), sizeof(__sycl::DeviceCameraParams));
     sycl::queue& queue = (sycl::queue&)stream;
     queue.memcpy(&__sycl::cameraParametersArray_d[deviceCameraParamsId], &cameraParameters_h, sizeof(DeviceCameraParams));
+    queue.wait();
 }
 catch(sycl::exception& e) 
 {

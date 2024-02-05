@@ -62,6 +62,32 @@ inline sycl::float3 cross(const sycl::float3& a, const sycl::float3& b)
     return sycl::float3(a.y() * b.z() - a.z() * b.y(), a.z() * b.x() - a.x() * b.z(), a.x() * b.y() - a.y() * b.x());
 }
 
+inline void normalize(sycl::float3& a)
+{
+    // without optimization
+    // float d = sqrtf(dot(a, a));
+    // a.x /= d;
+    // a.y /= d;
+    // a.z /= d;
+
+    const float dInv = 1.0f / sycl::sqrt(dot(a, a));
+    a.x() *= dInv;
+    a.y() *= dInv;
+    a.z() *= dInv;
+}
+
+inline void normalize(sycl::float2& a)
+{
+    // without optimization
+    // float d = sqrtf(dot(a, a));
+    // a.x /= d;
+    // a.y /= d;
+
+    const float dInv = 1.0f / sycl::sqrt(dot(a, a));
+    a.x() *= dInv;
+    a.y() *= dInv;
+}
+
 inline sycl::float3 M3x4mulV3(const float* M3x4, const sycl::float3& V)
 {
     return sycl::float3(M3x4[0] * V.x() + M3x4[3] * V.y() + M3x4[6] * V.z() + M3x4[9],

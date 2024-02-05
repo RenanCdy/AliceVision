@@ -108,7 +108,15 @@ catch(sycl::exception const& e)
 void downscaleWithGaussianBlur_kernel(
     sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> in_img_tex,
     sycl::sampler sampler,
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_UCHAR
+    sycl::accessor<sycl::uchar4, 2, sycl::access::mode::write> out_downscaledImg_d,
+#else
+#ifdef ALICEVISION_DEPTHMAP_TEXTURE_USE_HALF
     sycl::accessor<sycl::ushort4, 2, sycl::access::mode::write> out_downscaledImg_d,
+#else
+    sycl::accessor<sycl::float4, 2, sycl::access::mode::write> out_downscaledImg_d,
+#endif
+#endif
     int out_downscaledImg_p, unsigned int downscaledImgWidth, unsigned int downscaledImgHeight, int downscale,
     int gaussRadius, const sycl::nd_item<3>& item_ct1, int* d_gaussianArrayOffset, float* d_gaussianArray)
 {

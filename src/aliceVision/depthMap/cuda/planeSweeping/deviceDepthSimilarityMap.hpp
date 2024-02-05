@@ -85,7 +85,7 @@ extern void cuda_depthSimMapComputeNormal(CudaDeviceMemoryPitched<float3, 2>& ou
                                           const int rcDeviceCameraParamsId,
                                           const int stepXY,
                                           const ROI& roi,
-                                          DeviceStream& stream);
+                                          cudaStream_t stream);
 
 /**
  * @brief Optimize a depth/sim map with the refineFused depth/sim map and the SGM depth/pixSize map.
@@ -109,7 +109,7 @@ extern void cuda_depthSimMapOptimizeGradientDescent(CudaDeviceMemoryPitched<floa
                                                     const DeviceMipmapImage& rcDeviceMipmapImage,
                                                     const RefineParams& refineParams,
                                                     const ROI& roi,
-                                                    DeviceStream& stream);
+                                                    cudaStream_t stream);
 
 } // namespace depthMap
 } // namespace aliceVision

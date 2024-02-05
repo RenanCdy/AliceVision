@@ -263,6 +263,9 @@ if(ALICEVISION_HAVE_OPENMP)
   endif()
 endif()
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fhonor-infinities")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fhonor-infinities")
+
 # ==============================================================================
 # Boost
 # ==============================================================================
@@ -686,7 +689,7 @@ if(ALICEVISION_HAVE_CUDA)
   set(CUDA_SEPARABLE_COMPILATION ON)
   message("Build Mode: ${CMAKE_BUILD_TYPE}")
 
-  set(CUDA_NVCC_FLAGS_DEBUG   "${CUDA_NVCC_FLAGS_DEBUG};-G;-g")
+  set(CUDA_NVCC_FLAGS_DEBUG   "${CUDA_NVCC_FLAGS_DEBUG};-G;-g;-O0")
   # set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-O3")
   if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL 12)
     set(ALICEVISION_CUDA_CC_LIST_BASIC 50 52 60 61 62 70 72 75 80 86 87 89 90)
@@ -720,6 +723,8 @@ if(ALICEVISION_HAVE_CUDA)
 
   # default stream legacy implies that the 0 stream synchronizes all streams
   set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--default-stream;legacy")
+  set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-g;-O0")
+
   # default stream per-thread implies that each host thread has one non-synchronizing 0-stream
   # set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--default-stream;per-thread")
   # print local memory usage per kernel: -Xptxas;-v

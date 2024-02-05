@@ -2,9 +2,9 @@
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
 	message("Compiling Alicevision with intel compiler")
-	#string(APPEND CMAKE_CXX_FLAGS " -fiopenmp -Wno-error=all")
-	#string(APPEND CMAKE_C_FLAGS " -allow-unsupported-compiler -fiopenmp -Wno-error=all")
-	include_directories("/opt/intel/oneapi/compiler/2023.2.0/linux/compiler/include/")
+	string(APPEND CMAKE_CXX_FLAGS " -g -O0 ")
+	string(APPEND CMAKE_C_FLAGS " -g -O0 ")
+	include_directories("/opt/intel/oneapi/compiler/2024.0/linux/compiler/include/")
 	message(STATUS "Include Directories: ${CMAKE_INCLUDE_PATH}")
         message(STATUS "CXX Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 	message(STATUS "CXX Compiler Flags: ${CMAKE_CXX_FLAGS}")

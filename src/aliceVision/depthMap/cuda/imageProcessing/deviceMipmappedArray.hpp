@@ -21,8 +21,9 @@ namespace depthMap {
  */
 extern void cuda_createMipmappedArrayFromImage(_cudaMipmappedArray_t* out_mipmappedArrayPtr,
                                                const CudaDeviceMemoryPitched<CudaRGBA, 2>& in_img_dmp,
-                                               const unsigned int levels,
-                                               sycl::_V1::queue& stream);
+                                               const unsigned int levels
+                                               ,sycl::queue& stream
+                                               );
 
 /**
  * @brief Create CUDA mipmapped array texture object.

@@ -25,5 +25,14 @@ struct custom_float3 {
         return *this;
     }
 
+    custom_float3 operator-(const sycl::float3& other) const {
+        return custom_float3(data[0] - other.x(), data[1] - other.y(), data[2] - other.z());
+    }
+    custom_float3 operator+(const sycl::float3& other) const {
+        return custom_float3(data[0] + other.x(), data[1] + other.y(), data[2] + other.z());
+    }
+    operator sycl::float3() const {
+        return sycl::float3(data[0], data[1], data[2]);
+    }
 };
 };
