@@ -87,16 +87,16 @@ and may cause high register pressure. Consult with your hardware vendor to find 
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 void volume_computeSimilarity_kernel(
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_rc,
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_tc,
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_p,
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_n,
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_x,
-    sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_y,
-    sycl::accessor<float, 1, sycl::access::mode::write> out_patch_d,
-    sycl::accessor<sycl::uint3, 1, sycl::access::mode::write> out_patch_roi,
-    sycl::accessor<float, 1, sycl::access::mode::write> out_patch_depth,
-    sycl::accessor<sycl::float2, 1, sycl::access::mode::write> out_patch_xy,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_rc,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_tc,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_p,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_n,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_x,
+    // sycl::accessor<sycl::float3, 1, sycl::access::mode::write> out_patch_y,
+    // sycl::accessor<float, 1, sycl::access::mode::write> out_patch_d,
+    // sycl::accessor<sycl::uint3, 1, sycl::access::mode::write> out_patch_roi,
+    // sycl::accessor<float, 1, sycl::access::mode::write> out_patch_depth,
+    // sycl::accessor<sycl::float2, 1, sycl::access::mode::write> out_patch_xy,
 
     sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume1st_d,
     sycl::accessor<TSim, 3, sycl::access::mode::write> out_volume2nd_d,
@@ -121,13 +121,13 @@ void volume_computeSimilarity_kernel(
     const unsigned int roiY = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
     const unsigned int roiZ = item_ct1.get_group(0);
     
-    out_patch_rc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
-    out_patch_tc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
-    out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
-    out_patch_x[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
-    out_patch_y[item_ct1.get_global_linear_id()] = -42.0;
-    out_patch_depth[item_ct1.get_global_linear_id()] = -42.0;
-    out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(-42.0, -42.0);
+    // out_patch_rc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    // out_patch_tc[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    // out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
+    // out_patch_x[item_ct1.get_global_linear_id()] = sycl::float3(-42.0);
+    // out_patch_y[item_ct1.get_global_linear_id()] = -42.0;
+    // out_patch_depth[item_ct1.get_global_linear_id()] = -42.0;
+    // out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(-42.0, -42.0);
 
     if(roiX >= roi.width() || roiY >= roi.height()) // no need to check roiZ
         return;
@@ -153,16 +153,16 @@ void volume_computeSimilarity_kernel(
     volume_computePatch(patch, rcDeviceCamParams, tcDeviceCamParams, depthPlane, sycl::float2(x, y));
     
     
-    out_patch_rc[item_ct1.get_global_linear_id()] = rcDeviceCamParams.C;
-    out_patch_tc[item_ct1.get_global_linear_id()] = tcDeviceCamParams.C;
-    out_patch_p[item_ct1.get_global_linear_id()] = patch.p;
-    out_patch_n[item_ct1.get_global_linear_id()] = patch.n;
-    out_patch_x[item_ct1.get_global_linear_id()] = patch.x;
-    out_patch_y[item_ct1.get_global_linear_id()] = patch.y;
-    out_patch_d[item_ct1.get_global_linear_id()] = patch.d;
-    out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
-    out_patch_depth[item_ct1.get_global_linear_id()] = depthPlane;
-    out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(x, y);
+    // out_patch_rc[item_ct1.get_global_linear_id()] = rcDeviceCamParams.C;
+    // out_patch_tc[item_ct1.get_global_linear_id()] = tcDeviceCamParams.C;
+    // out_patch_p[item_ct1.get_global_linear_id()] = patch.p;
+    // out_patch_n[item_ct1.get_global_linear_id()] = patch.n;
+    // out_patch_x[item_ct1.get_global_linear_id()] = patch.x;
+    // out_patch_y[item_ct1.get_global_linear_id()] = patch.y;
+    // out_patch_d[item_ct1.get_global_linear_id()] = patch.d;
+    // out_patch_roi[item_ct1.get_global_linear_id()] = sycl::uint3(roiX,roiY,roiZ);
+    // out_patch_depth[item_ct1.get_global_linear_id()] = depthPlane;
+    // out_patch_xy[item_ct1.get_global_linear_id()] = sycl::float2(x, y);
     // we do not need positive and filtered similarity values
     constexpr bool invertAndFilter = false;
 

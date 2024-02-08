@@ -8,6 +8,8 @@
 
 #include <aliceVision/depthMap/cuda/host/memory.hpp>
 
+class DeviceStream;
+
 namespace aliceVision {
 namespace depthMap {
 

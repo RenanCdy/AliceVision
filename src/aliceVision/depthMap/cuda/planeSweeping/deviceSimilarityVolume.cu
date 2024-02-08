@@ -176,41 +176,41 @@ __host__ void cuda_volumeComputeSimilarity(CudaDeviceMemoryPitched<TSim, 3>& out
     const dim3 block = getMaxPotentialBlockSize(volume_computeSimilarity_kernel);
     const dim3 grid(divUp(roi.width(), block.x), divUp(roi.height(), block.y), depthRange.size());
 
-    printf("Grid : {%d, %d, %d} blocks. Blocks : {%d, %d, %d} threads.\n",
-    grid.x, grid.y, grid.z, block.x, block.y, block.z);
+    // printf("Grid : {%d, %d, %d} blocks. Blocks : {%d, %d, %d} threads.\n",
+    // grid.x, grid.y, grid.z, block.x, block.y, block.z);
 
     // Define the size of the data
-    size_t glob_size = grid.x * grid.y * grid.z * block.x * block.y * block.z;
-    // Allocate memory on the device
-    float3* patches_data_rc_device;
-    float3* patches_data_tc_device;
-    float3* patches_data_p_device;
-    float3* patches_data_n_device;
-    float3* patches_data_x_device;
-    float3* patches_data_y_device;
-    float* patches_data_d_device;
-    uint3* patches_data_roi_device;
-    float* patches_data_depth_device;
-    float2* patches_data_xy_device;
-    cudaMalloc(&patches_data_rc_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_tc_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_p_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_n_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_x_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_y_device, glob_size * sizeof(float3));
-    cudaMalloc(&patches_data_d_device, glob_size * sizeof(float));
-    cudaMalloc(&patches_data_roi_device, glob_size * sizeof(uint3));
-    cudaMalloc(&patches_data_depth_device, glob_size * sizeof(float));
-    cudaMalloc(&patches_data_xy_device, glob_size * sizeof(float2));
+    // size_t glob_size = grid.x * grid.y * grid.z * block.x * block.y * block.z;
+    // // Allocate memory on the device
+    // float3* patches_data_rc_device;
+    // float3* patches_data_tc_device;
+    // float3* patches_data_p_device;
+    // float3* patches_data_n_device;
+    // float3* patches_data_x_device;
+    // float3* patches_data_y_device;
+    // float* patches_data_d_device;
+    // uint3* patches_data_roi_device;
+    // float* patches_data_depth_device;
+    // float2* patches_data_xy_device;
+    // cudaMalloc(&patches_data_rc_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_tc_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_p_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_n_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_x_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_y_device, glob_size * sizeof(float3));
+    // cudaMalloc(&patches_data_d_device, glob_size * sizeof(float));
+    // cudaMalloc(&patches_data_roi_device, glob_size * sizeof(uint3));
+    // cudaMalloc(&patches_data_depth_device, glob_size * sizeof(float));
+    // cudaMalloc(&patches_data_xy_device, glob_size * sizeof(float2));
 
 
     // kernel execution
     volume_computeSimilarity_kernel<<<grid, block, 0, stream>>>(
-        patches_data_rc_device, patches_data_tc_device,
-        patches_data_p_device, patches_data_n_device,
-        patches_data_x_device, patches_data_y_device, patches_data_d_device,
-        patches_data_roi_device, patches_data_depth_device, 
-        patches_data_xy_device,
+        // patches_data_rc_device, patches_data_tc_device,
+        // patches_data_p_device, patches_data_n_device,
+        // patches_data_x_device, patches_data_y_device, patches_data_d_device,
+        // patches_data_roi_device, patches_data_depth_device, 
+        // patches_data_xy_device,
         out_volBestSim_dmp.getBuffer(),
         out_volBestSim_dmp.getBytesPaddedUpToDim(1),
         out_volBestSim_dmp.getBytesPaddedUpToDim(0),
@@ -241,63 +241,63 @@ __host__ void cuda_volumeComputeSimilarity(CudaDeviceMemoryPitched<TSim, 3>& out
     CHECK_CUDA_ERROR();
 
     // Allocate memory on the host
-    std::vector<float3> patches_data_rc(glob_size);
-    std::vector<float3> patches_data_tc(glob_size);
-    std::vector<float3> patches_data_p(glob_size);
-    std::vector<float3> patches_data_n(glob_size);
-    std::vector<float3> patches_data_x(glob_size);
-    std::vector<float3> patches_data_y(glob_size);
-    std::vector<float> patches_data_d(glob_size);
-    std::vector<uint3> patches_data_roi(glob_size);
-    std::vector<float> patches_data_depth(glob_size);
-    std::vector<float2> patches_data_xy(glob_size);
+    // std::vector<float3> patches_data_rc(glob_size);
+    // std::vector<float3> patches_data_tc(glob_size);
+    // std::vector<float3> patches_data_p(glob_size);
+    // std::vector<float3> patches_data_n(glob_size);
+    // std::vector<float3> patches_data_x(glob_size);
+    // std::vector<float3> patches_data_y(glob_size);
+    // std::vector<float> patches_data_d(glob_size);
+    // std::vector<uint3> patches_data_roi(glob_size);
+    // std::vector<float> patches_data_depth(glob_size);
+    // std::vector<float2> patches_data_xy(glob_size);
 
-    // Copy the data from the device to the host
-    cudaMemcpy(patches_data_rc.data(), patches_data_rc_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_tc.data(), patches_data_tc_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_p.data(), patches_data_p_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_n.data(), patches_data_n_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_x.data(), patches_data_x_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_y.data(), patches_data_y_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_d.data(), patches_data_d_device, glob_size * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_roi.data(), patches_data_roi_device, glob_size * sizeof(uint3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_depth.data(), patches_data_depth_device, glob_size * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(patches_data_xy.data(), patches_data_xy_device, glob_size * sizeof(float2), cudaMemcpyDeviceToHost);
+    // // Copy the data from the device to the host
+    // cudaMemcpy(patches_data_rc.data(), patches_data_rc_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_tc.data(), patches_data_tc_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_p.data(), patches_data_p_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_n.data(), patches_data_n_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_x.data(), patches_data_x_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_y.data(), patches_data_y_device, glob_size * sizeof(float3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_d.data(), patches_data_d_device, glob_size * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_roi.data(), patches_data_roi_device, glob_size * sizeof(uint3), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_depth.data(), patches_data_depth_device, glob_size * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(patches_data_xy.data(), patches_data_xy_device, glob_size * sizeof(float2), cudaMemcpyDeviceToHost);
 
-    // Free the memory on the device
-    cudaFree(patches_data_rc_device);
-    cudaFree(patches_data_tc_device);
-    cudaFree(patches_data_p_device);
-    cudaFree(patches_data_n_device);
-    cudaFree(patches_data_x_device);
-    cudaFree(patches_data_y_device);
-    cudaFree(patches_data_d_device);
-    cudaFree(patches_data_roi_device);
-    cudaFree(patches_data_depth_device);
-    cudaFree(patches_data_xy_device);
+    // // Free the memory on the device
+    // cudaFree(patches_data_rc_device);
+    // cudaFree(patches_data_tc_device);
+    // cudaFree(patches_data_p_device);
+    // cudaFree(patches_data_n_device);
+    // cudaFree(patches_data_x_device);
+    // cudaFree(patches_data_y_device);
+    // cudaFree(patches_data_d_device);
+    // cudaFree(patches_data_roi_device);
+    // cudaFree(patches_data_depth_device);
+    // cudaFree(patches_data_xy_device);
 
     
-    std::cout << "Patches is size: "<<glob_size<<"\n";
+    // std::cout << "Patches is size: "<<glob_size<<"\n";
 
-     // Create an ofstream object
-     std::ofstream outFile;
-     std::string outputFileName = "output_cuda_" + std::to_string(rcDeviceCameraParamsId) + "_" + std::to_string(tcDeviceCameraParamsId) + ".txt";
-     outFile.open(outputFileName);
-     // Write the vectors to the file
-     for (size_t i = 0; i < glob_size; ++i) {
-        //if(patches_data_x[i].x && patches_data_x[i].y && patches_data_x[i].z && patches_data_y[i])
-        outFile << i << " " << patches_data_rc[i].x << " " << patches_data_rc[i].y << " " << patches_data_rc[i].z <<
-        " " << patches_data_tc[i].x << " " << patches_data_tc[i].y << " " << patches_data_tc[i].z <<
-        " " << patches_data_p[i].x << " " << patches_data_p[i].y << " " << patches_data_p[i].z <<
-        " " << patches_data_n[i].x << " " << patches_data_n[i].y << " " << patches_data_n[i].z <<
-        " " << patches_data_x[i].x << " " << patches_data_x[i].y << " " << patches_data_x[i].z << 
-        " " << patches_data_y[i].x << " " << patches_data_y[i].y << " " << patches_data_y[i].z <<
-        " " << patches_data_d[i] << 
-        " " << patches_data_depth[i] << " " << patches_data_roi[i].x << " " << patches_data_roi[i].y << " " << patches_data_roi[i].z << " " << patches_data_xy[i].x << " " << patches_data_xy[i].y << "\n";
-    }
+    //  // Create an ofstream object
+    //  std::ofstream outFile;
+    //  std::string outputFileName = "output_cuda_" + std::to_string(rcDeviceCameraParamsId) + "_" + std::to_string(tcDeviceCameraParamsId) + ".txt";
+    //  outFile.open(outputFileName);
+    //  // Write the vectors to the file
+    //  for (size_t i = 0; i < glob_size; ++i) {
+    //     //if(patches_data_x[i].x && patches_data_x[i].y && patches_data_x[i].z && patches_data_y[i])
+    //     outFile << i << " " << patches_data_rc[i].x << " " << patches_data_rc[i].y << " " << patches_data_rc[i].z <<
+    //     " " << patches_data_tc[i].x << " " << patches_data_tc[i].y << " " << patches_data_tc[i].z <<
+    //     " " << patches_data_p[i].x << " " << patches_data_p[i].y << " " << patches_data_p[i].z <<
+    //     " " << patches_data_n[i].x << " " << patches_data_n[i].y << " " << patches_data_n[i].z <<
+    //     " " << patches_data_x[i].x << " " << patches_data_x[i].y << " " << patches_data_x[i].z << 
+    //     " " << patches_data_y[i].x << " " << patches_data_y[i].y << " " << patches_data_y[i].z <<
+    //     " " << patches_data_d[i] << 
+    //     " " << patches_data_depth[i] << " " << patches_data_roi[i].x << " " << patches_data_roi[i].y << " " << patches_data_roi[i].z << " " << patches_data_xy[i].x << " " << patches_data_xy[i].y << "\n";
+    // }
 
-     // Close the file
-     outFile.close();
+    //  // Close the file
+    //  outFile.close();
 
 }
 

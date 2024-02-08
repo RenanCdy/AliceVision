@@ -107,12 +107,12 @@ __global__ void volume_updateUninitialized_kernel(TSim* inout_volume2nd_d, int i
 }
 
 __global__ void volume_computeSimilarity_kernel( 
-    float3* out_patch_rc,
-    float3* out_patch_tc,
-    float3* out_patch_p, float3* out_patch_n,
-    float3* out_patch_x, float3* out_patch_y,
-    float* out_patch_d,
-    uint3*out_patch_roi, float* out_patch_depth, float2*out_patch_xy,
+    // float3* out_patch_rc,
+    // float3* out_patch_tc,
+    // float3* out_patch_p, float3* out_patch_n,
+    // float3* out_patch_x, float3* out_patch_y,
+    // float* out_patch_d,
+    // uint3*out_patch_roi, float* out_patch_depth, float2*out_patch_xy,
                         TSim* out_volume1st_d, int out_volume1st_s, int out_volume1st_p,
                                                 TSim* out_volume2nd_d, int out_volume2nd_s, int out_volume2nd_p,
                                                 const float* in_depths_d, const int in_depths_p,
@@ -148,28 +148,19 @@ __global__ void volume_computeSimilarity_kernel(
     const unsigned long long int threadId = threadIdx.x + blockIdx.x * blockDim.x 
               + (threadIdx.y + blockIdx.y * blockDim.y) * gridDim.x * blockDim.x 
               + (threadIdx.z + blockIdx.z * blockDim.z) * gridDim.x * blockDim.x * gridDim.y * blockDim.y;
-    // {
-    //     // Calculate the total number of threads launched
-    //     int totalThreads = blockDim.x * blockDim.y * blockDim.z;
 
-    //     // Calculate the largest global thread ID
-    //     int largestGlobalThreadID = (blockDim.x * blockDim.y * blockDim.z) - 1;
+              
+    // out_patch_rc[threadId] = make_float3(-42.0,-42.0,-42.0);
+    // out_patch_tc[threadId] = make_float3(-42.0,-42.0,-42.0);
 
-    //     // Print the total number of threads launched and the largest global thread ID
-    //     printf("Total threads launched: %d\n", totalThreads);
-    //     printf("Largest global thread ID: %d\n", largestGlobalThreadID);
-    // }
-    out_patch_rc[threadId] = make_float3(-42.0,-42.0,-42.0);
-    out_patch_tc[threadId] = make_float3(-42.0,-42.0,-42.0);
-
-    out_patch_roi[threadId] = make_uint3(roiX,roiY,roiZ);
-    out_patch_p[threadId] = make_float3(-42.0,-42.0,-42.0);
-    out_patch_n[threadId] = make_float3(-42.0,-42.0,-42.0);
-    out_patch_x[threadId] = make_float3(-42.0,-42.0,-42.0);
-    out_patch_y[threadId] = make_float3(-42.0,-42.0,-42.0);
-    out_patch_d[threadId] = -42.0;
-    out_patch_depth[threadId] = -42.0;
-    out_patch_xy[threadId] = make_float2(-42.0, -42.0);
+    // out_patch_roi[threadId] = make_uint3(roiX,roiY,roiZ);
+    // out_patch_p[threadId] = make_float3(-42.0,-42.0,-42.0);
+    // out_patch_n[threadId] = make_float3(-42.0,-42.0,-42.0);
+    // out_patch_x[threadId] = make_float3(-42.0,-42.0,-42.0);
+    // out_patch_y[threadId] = make_float3(-42.0,-42.0,-42.0);
+    // out_patch_d[threadId] = -42.0;
+    // out_patch_depth[threadId] = -42.0;
+    // out_patch_xy[threadId] = make_float2(-42.0, -42.0);
 
     if(roiX >= roi.width() || roiY >= roi.height()) // no need to check roiZ
         return;
@@ -195,16 +186,16 @@ __global__ void volume_computeSimilarity_kernel(
     volume_computePatch(patch, rcDeviceCamParams, tcDeviceCamParams, depthPlane, make_float2(x, y));
 
     
-    out_patch_rc[threadId] = rcDeviceCamParams.C;
-    out_patch_tc[threadId] = tcDeviceCamParams.C;
-    out_patch_p[threadId] = patch.p;
-    out_patch_n[threadId] = patch.n;
-    out_patch_x[threadId] = patch.x;
-    out_patch_y[threadId] = patch.y;
-    out_patch_d[threadId] = patch.d;
-    out_patch_roi[threadId] = make_uint3(roiX,roiY,roiZ);
-    out_patch_depth[threadId] = depthPlane;
-    out_patch_xy[threadId] = make_float2(x, y);
+    // out_patch_rc[threadId] = rcDeviceCamParams.C;
+    // out_patch_tc[threadId] = tcDeviceCamParams.C;
+    // out_patch_p[threadId] = patch.p;
+    // out_patch_n[threadId] = patch.n;
+    // out_patch_x[threadId] = patch.x;
+    // out_patch_y[threadId] = patch.y;
+    // out_patch_d[threadId] = patch.d;
+    // out_patch_roi[threadId] = make_uint3(roiX,roiY,roiZ);
+    // out_patch_depth[threadId] = depthPlane;
+    // out_patch_xy[threadId] = make_float2(x, y);
 
     // we do not need positive and filtered similarity values
     constexpr bool invertAndFilter = false;

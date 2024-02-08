@@ -25,7 +25,7 @@ namespace depthMap {
 extern void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<float2, 2>& out_depthSimMap_dmp,
                                           const CudaDeviceMemoryPitched<float2, 2>& in_depthSimMap_dmp,
                                           float defaultSim,
-                                          DeviceStream& stream);
+                                          cudaStream_t stream);
 
 /**
  * @brief Upscale the given normal map.
@@ -37,7 +37,7 @@ extern void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<float2, 2>& ou
 extern void cuda_normalMapUpscale(CudaDeviceMemoryPitched<float3, 2>& out_upscaledMap_dmp,
                                   const CudaDeviceMemoryPitched<float3, 2>& in_map_dmp,
                                   const ROI& roi,
-                                  DeviceStream& stream);
+                                  cudaStream_t stream);
 
 /**
  * @brief Smooth thickness map with adjacent pixels.
@@ -51,7 +51,7 @@ extern void cuda_depthThicknessSmoothThickness(CudaDeviceMemoryPitched<float2, 2
                                              const SgmParams& sgmParams,
                                              const RefineParams& refineParams,
                                              const ROI& roi,
-                                             DeviceStream& stream);
+                                             cudaStream_t stream);
 
 /**
  * @brief Upscale the given depth/thickness map, filter masked pixels and compute pixSize from thickness.
@@ -69,7 +69,7 @@ extern void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<float
                                                    const DeviceMipmapImage& rcDeviceMipmapImage,
                                                    const RefineParams& refineParams,
                                                    const ROI& roi,
-                                                   DeviceStream& stream);
+                                                   cudaStream_t stream);
 
 /**
  * @brief Compute the normal map from the depth/sim map (only depth is used).
