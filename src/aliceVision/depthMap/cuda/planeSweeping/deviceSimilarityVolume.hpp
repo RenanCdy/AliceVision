@@ -74,7 +74,7 @@ extern void cuda_volumeComputeSimilarity(CudaDeviceMemoryPitched<TSim, 3>& out_v
                                          const SgmParams& sgmParams, 
                                          const Range& depthRange,
                                          const ROI& roi,
-                                         cudaStream_t stream);
+                                         DeviceStream& stream);
 
 /**
  * @brief Refine the best similarity volume for the given RC / TC.

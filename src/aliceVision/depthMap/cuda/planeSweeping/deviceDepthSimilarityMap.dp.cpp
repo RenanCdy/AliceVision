@@ -322,8 +322,14 @@ try {
     const float rcMipmapLevel = rcDeviceMipmapImage.getLevel(refineParams.scale);
     const CudaSize<2> rcLevelDim = rcDeviceMipmapImage.getDimensions(refineParams.scale);
 
+    sycl::queue& queue = (sycl::queue&)stream;
     // initialize depth/sim map optimized with SGM depth/pixSize map
+    cudaEvent_t copyfrom;
+  cudaEventCreate(&copyfrom);
+    cudaEventRecord(copyfrom,stream); // StreamA triggers halfA!
     out_optimizeDepthSimMap_dmp.copyFrom(in_sgmDepthPixSizeMap_dmp, stream);
+    cudaStreamWaitEvent(stream, copyfrom, 0);
+  cudaEventDestroy(copyfrom);
 
     {
         // kernel launch parameters
@@ -334,7 +340,6 @@ try {
         ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
 
         // kernel execution
-        sycl::queue& queue = (sycl::queue&)stream;
         auto optimizeEvent = queue.submit(
             [&](sycl::handler& cgh)
             {
@@ -371,14 +376,13 @@ try {
     const sycl::range<3> block(1, blockSize, blockSize);
     const sycl::range<3> grid(1, divUp(roi.height(), blockSize), divUp(roi.width(), blockSize));
 
-    BufferLocker inout_tmpOptDepthMap_dmp_locker(inout_tmpOptDepthMap_dmp);
-    BufferLocker out_optimizeDepthSimMap_dmp_locker(out_optimizeDepthSimMap_dmp);
-
     for(int iter = 0; iter < refineParams.optimizationNbIterations; ++iter) // default nb iterations is 100
     {
-        
+        {
+        BufferLocker inout_tmpOptDepthMap_dmp_locker(inout_tmpOptDepthMap_dmp);
+        BufferLocker out_optimizeDepthSimMap_dmp_locker(out_optimizeDepthSimMap_dmp);
+
         // copy depths values from out_depthSimMapOptimized_dmp to inout_tmpOptDepthMap_dmp
-        sycl::queue& queue = (sycl::queue&)stream;
         auto optimizeEvent = queue.submit(
             [&](sycl::handler& cgh)
             {
@@ -401,7 +405,7 @@ try {
                                  });
             });
         optimizeEvent.wait();
-
+}
         // adjust depth/sim by using previously computed depths
         {
 
@@ -456,8 +460,8 @@ try {
                                 roi, item_ct1, cameraParametersArray_d);
                         });
                 });
+                optimizeEvent.wait();
         }
-        optimizeEvent.wait();
     }
 
 } catch(sycl::exception const & e) {

@@ -50,7 +50,7 @@ extern void cuda_downscaleWithGaussianBlur(CudaDeviceMemoryPitched<CudaRGBA, 2>&
                                            cudaTextureObject_t in_img_tex,
                                            int downscale,
                                            int gaussRadius,
-                                           cudaStream_t stream);
+                                           DeviceStream& stream);
                                            
 /**
  * @brief Apply a Gaussion blur to the Z axis of the given volume.
@@ -60,7 +60,7 @@ extern void cuda_downscaleWithGaussianBlur(CudaDeviceMemoryPitched<CudaRGBA, 2>&
  */
 extern void cuda_gaussianBlurVolumeZ(CudaDeviceMemoryPitched<float, 3>& inout_volume_dmp, 
                                      int gaussRadius, 
-                                     cudaStream_t stream);
+                                     DeviceStream& stream);
 
 /**
  * @brief Apply a Gaussion blur to the XYZ axis of the given volume.
@@ -70,7 +70,7 @@ extern void cuda_gaussianBlurVolumeZ(CudaDeviceMemoryPitched<float, 3>& inout_vo
  */
 extern void cuda_gaussianBlurVolumeXYZ(CudaDeviceMemoryPitched<float, 3>& inout_volume_dmp, 
                                        int gaussRadius, 
-                                       cudaStream_t stream);
+                                       DeviceStream& stream);
 
 /**
  * @brief Apply a Median filter to the given image.

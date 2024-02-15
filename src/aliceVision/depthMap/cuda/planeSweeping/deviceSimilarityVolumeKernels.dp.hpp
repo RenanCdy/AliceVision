@@ -339,11 +339,14 @@ void volume_initVolumeYSlice_kernel(//T* volume_d, int volume_s, int volume_p,
     const int z = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
     sycl::int3 v;
-    (&v.x())[axisT.x()] = x;
-    (&v.x())[axisT.y()] = y;
-    (&v.x())[axisT.z()] = z;
-
-    if ((x >= 0) && (x < (&volDim.x())[axisT.x()]) && (z >= 0) && (z < (&volDim.x())[axisT.z()]))
+    // (&v.x())[axisT.x()] = x;
+    // (&v.x())[axisT.y()] = y;
+    // (&v.x())[axisT.z()] = z;
+    v[axisT.x()] = x;
+    v[axisT.y()] = y;
+    v[axisT.z()] = z;
+    if ((x >= 0) && (x < volDim[axisT.x()]) && (z >= 0) && (z < volDim[axisT.z()]))
+    //if ((x >= 0) && (x < (&volDim.x())[axisT.x()]) && (z >= 0) && (z < (&volDim.x())[axisT.z()]))
     {
         T& volume_zyx = get3DBufferAt(volume_d, v.x(), v.y(), v.z());
         volume_zyx = cst;
@@ -362,11 +365,17 @@ void volume_getVolumeXZSlice_kernel(//T1* slice_d, int slice_p,
     const int z = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
     sycl::int3 v;
-    (&v.x())[axisT.x()] = x;
-    (&v.x())[axisT.y()] = y;
-    (&v.x())[axisT.z()] = z;
+    // (&v.x())[axisT.x()] = x;
+    // (&v.x())[axisT.y()] = y;
+    // (&v.x())[axisT.z()] = z;
 
-    if (x >= (&volDim.x())[axisT.x()] || z >= (&volDim.x())[axisT.z()])
+    
+    v[axisT.x()] = x;
+    v[axisT.y()] = y;
+    v[axisT.z()] = z;
+
+    if (x >= volDim[axisT.x()] || z >= volDim[axisT.z()])
+    //if (x >= (&volDim.x())[axisT.x()] || z >= (&volDim.x())[axisT.z()])
       return;
 
     const T2& volume_xyz = get3DBufferAt(volume_d, v);
@@ -424,11 +433,15 @@ void volume_agregateCostVolumeAtXinSlices_kernel(
     const int z = item_ct1.get_group(1) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
 
     sycl::int3 v;
-    (&v.x())[axisT.x()] = x;
-    (&v.x())[axisT.y()] = y;
-    (&v.x())[axisT.z()] = z;
+    // (&v.x())[axisT.x()] = x;
+    // (&v.x())[axisT.y()] = y;
+    // (&v.x())[axisT.z()] = z;
+    v[axisT.x()] = x;
+    v[axisT.y()] = y;
+    v[axisT.z()] = z;
 
-    if(x >= (&volDim.x())[axisT.x()] || z >= volDim.z())
+    // if(x >= (&volDim.x())[axisT.x()] || z >= volDim.z())
+    if(x >= volDim[axisT.x()] || z >= volDim.z())
         return;
 
     // find texture offset

@@ -179,11 +179,6 @@ try
     // sycl::buffer<float, 1> patch_buf_depth(patches_data_depth.data(), patches_data_depth.size());
     // sycl::buffer<sycl::float2, 1> patch_buf_xy(patches_data_xy.data(), patches_data_xy.size());
 
-    printf("ROI : {%u, %u, %u}.\n",
-        roi.width(), roi.height(), depthRange.size());
-    printf("Grid : {%zu, %zu, %zu} blocks. Blocks : {%zu, %zu, %zu} threads.\n",
-        grid[0], grid[1], grid[2], block[0], block[1], block[2]);
-
     // kernel execution
     sycl::queue& queue = (sycl::queue&)stream;
     auto volume_computeSimilarity_event = queue.submit(
@@ -405,7 +400,7 @@ try {
     // kernel launch parameters
     const sycl::range<3> block(1,18,32);
     //TODO: const sycl::range<3> block = getMaxPotentialBlockSize(volume_updateUninitialized_kernel);
-    const sycl::range<3> grid(volDim.z(), divUp(volDim.y(), block[1]), divUp(volDim.x(), block[2]));
+    const sycl::range<3> grid(volDim.z(), divUp(volDim.y(), block[1]), divUp(volDim.x(), block[2])); //  {x = 8, y = 15, z = 1500}
 
     // kernel execution
     BufferLocker inout_volSecBestSim_dmp_locker(inout_volSecBestSim_dmp);
@@ -588,14 +583,15 @@ try {
     CudaDeviceMemoryPitched<TSimAcc, 2>* xzSliceForYm1_dmpPtr = &inout_volSliceAccB_dmp; // Y-1 slice
     CudaDeviceMemoryPitched<TSimAcc, 2>* bestSimInYm1_dmpPtr  = &inout_volAxisAcc_dmp;   // best sim score along the Y axis for each Z value
 
+    sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
+
+    sycl::queue& queue = (sycl::queue&)stream;
+{
     BufferLocker xzSliceForYm1_dmpPtr_locker(*xzSliceForYm1_dmpPtr);
     BufferLocker in_volSim_dmp_locker(in_volSim_dmp);
     
-    sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
-
     // kernel execution
     // Copy the first XZ plane (at Y=0) from 'in_volSim_dmp' into 'xzSliceForYm1_dmpPtr'
-    sycl::queue& queue = (sycl::queue&)stream;
     auto volume_getSlice_event = queue.submit(
         [&](sycl::handler& cgh)
         {
@@ -618,8 +614,11 @@ try {
                                      volDim_, axisT_, 0, item_ct1);
                              });
         });
-    volume_getSlice_event.wait();
 
+    volume_getSlice_event.wait();
+}
+
+{
     BufferLocker out_volAgr_dmp_locker(out_volAgr_dmp);
     
     // Set the first Z plane from 'out_volAgr_dmp' to 255
@@ -642,14 +641,16 @@ try {
                              });
         });
     volume_initSlice_event.wait();
+}
 
-
-    BufferLocker bestSimInYm1_dmpPtr_locker(*bestSimInYm1_dmpPtr);
     
-    for(int iy = 1; iy < volDimY; ++iy)
-    {
+    for(int iy = 1; iy < volDimY; ++iy) {
+        
         const int y = invY ? volDimY - 1 - iy : iy;
 
+{
+        BufferLocker xzSliceForYm1_dmpPtr_locker(*xzSliceForYm1_dmpPtr);
+        BufferLocker bestSimInYm1_dmpPtr_locker(*bestSimInYm1_dmpPtr);
         // For each column: compute the best score
         // Foreach x:
         //   bestSimInYm1[x] = min(d_xzSliceForY[1:height])
@@ -672,84 +673,93 @@ try {
                                  });
             });
         volume_computeSlice_event.wait();
+}
 
-        BufferLocker xzSliceForY_dmpPtr_locker(*xzSliceForY_dmpPtr);
-        
-        // Copy the 'z' plane from 'in_volSim_dmp' into 'xzSliceForY'
-        auto volume_getSlice2_event = queue.submit(
-            [&](sycl::handler& cgh)
-            {
-                auto xzSliceForY_dmpPtr_acc = xzSliceForY_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
-                auto in_volSim_dmp_acc = in_volSim_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
-
-                //auto xzSliceForY_dmpPtr_getBuffer_ct0 = xzSliceForY_dmpPtr->getBuffer();
-                //auto xzSliceForY_dmpPtr_getPitch_ct1 = xzSliceForY_dmpPtr->getPitch();
-                //auto in_volSim_dmp_getBuffer_ct2 = in_volSim_dmp.getBuffer();
-                //auto in_volSim_dmp_getBytesPaddedUpToDim_ct3 = in_volSim_dmp.getBytesPaddedUpToDim(1);
-                //auto in_volSim_dmp_getBytesPaddedUpToDim_ct4 = in_volSim_dmp.getBytesPaddedUpToDim(0);
-
-                cgh.parallel_for(sycl::nd_range<3>(gridVolXZ * blockVolXZ, blockVolXZ),
-                                 [=](sycl::nd_item<3> item_ct1)
-                                 {
-                                     volume_getVolumeXZSlice_kernel<TSimAcc, TSim>(
-                                         xzSliceForY_dmpPtr_acc, //xzSliceForY_dmpPtr_getPitch_ct1,
-                                         in_volSim_dmp_acc, 
-                                        //  in_volSim_dmp_getBytesPaddedUpToDim_ct3,
-                                        //  in_volSim_dmp_getBytesPaddedUpToDim_ct4, 
-                                         volDim_, axisT_, y, item_ct1);
-                                 });
-            });
-        volume_getSlice2_event.wait();
-
-        BufferLocker xzSliceForYm1_dmpPtr_locker(*xzSliceForYm1_dmpPtr);
-        ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
         {
-            auto volume_aggregateSlice_event = queue.submit(
-                [&](sycl::handler& cgh)
+                BufferLocker xzSliceForY_dmpPtr_locker(*xzSliceForY_dmpPtr);
+                BufferLocker in_volSim_dmp_locker(in_volSim_dmp);
+
+                // Copy the 'z' plane from 'in_volSim_dmp' into 'xzSliceForY'
+                auto volume_getSlice2_event = queue.submit(
+                    [&](sycl::handler& cgh)
+                    {
+                        auto xzSliceForY_dmpPtr_acc = xzSliceForY_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                        auto in_volSim_dmp_acc = in_volSim_dmp_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+
+                        //auto xzSliceForY_dmpPtr_getBuffer_ct0 = xzSliceForY_dmpPtr->getBuffer();
+                        //auto xzSliceForY_dmpPtr_getPitch_ct1 = xzSliceForY_dmpPtr->getPitch();
+                        //auto in_volSim_dmp_getBuffer_ct2 = in_volSim_dmp.getBuffer();
+                        //auto in_volSim_dmp_getBytesPaddedUpToDim_ct3 = in_volSim_dmp.getBytesPaddedUpToDim(1);
+                        //auto in_volSim_dmp_getBytesPaddedUpToDim_ct4 = in_volSim_dmp.getBytesPaddedUpToDim(0);
+
+                        cgh.parallel_for(sycl::nd_range<3>(gridVolXZ * blockVolXZ, blockVolXZ),
+                                        [=](sycl::nd_item<3> item_ct1)
+                                        {
+                                            volume_getVolumeXZSlice_kernel<TSimAcc, TSim>(
+                                                xzSliceForY_dmpPtr_acc, //xzSliceForY_dmpPtr_getPitch_ct1,
+                                                in_volSim_dmp_acc, 
+                                                //  in_volSim_dmp_getBytesPaddedUpToDim_ct3,
+                                                //  in_volSim_dmp_getBytesPaddedUpToDim_ct4, 
+                                                volDim_, axisT_, y, item_ct1);
+                                        });
+                    });
+                volume_getSlice2_event.wait();
+        }
+
+        {
+                BufferLocker xzSliceForY_dmpPtr_locker(*xzSliceForY_dmpPtr);
+                BufferLocker xzSliceForYm1_dmpPtr_locker(*xzSliceForYm1_dmpPtr);
+                BufferLocker bestSimInYm1_dmpPtr_locker(*bestSimInYm1_dmpPtr);
+                BufferLocker out_volAgr_dmp_locker(out_volAgr_dmp);
+                ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
                 {
+                    auto volume_aggregateSlice_event = queue.submit(
+                        [&](sycl::handler& cgh)
+                        {
 
-                    auto xzSliceForY_dmpPtr_acc = xzSliceForY_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
-                    auto xzSliceForYm1_dmpPtr_acc = xzSliceForYm1_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
-                    auto bestSimInYm1_dmpPtr_acc = bestSimInYm1_dmpPtr_locker.buffer().get_access<sycl::access::mode::read>(cgh);
-                    auto out_volAgr_dmp_acc = out_volAgr_dmp_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
-                    sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
+                            auto xzSliceForY_dmpPtr_acc = xzSliceForY_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                            auto xzSliceForYm1_dmpPtr_acc = xzSliceForYm1_dmpPtr_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                            auto bestSimInYm1_dmpPtr_acc = bestSimInYm1_dmpPtr_locker.buffer().get_access<sycl::access::mode::read>(cgh);
+                            auto out_volAgr_dmp_acc = out_volAgr_dmp_locker.buffer().get_access<sycl::access::mode::read_write>(cgh);
+                            sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> rcDeviceMipmapImage_acc = rcDeviceMipmapImage_locker.image().get_access<sycl::float4, sycl::access::mode::read>(cgh);
 
-                    //auto rcDeviceMipmapImage_getTextureObject_ct0 = rcDeviceMipmapImage.getTextureObject();
-                    auto rcLevelDim_x_ct1 = (unsigned int)(rcLevelDim.x());
-                    auto rcLevelDim_y_ct2 = (unsigned int)(rcLevelDim.y());
-                    //auto xzSliceForY_dmpPtr_getBuffer_ct4 = xzSliceForY_dmpPtr->getBuffer();
-                    //auto xzSliceForY_dmpPtr_getPitch_ct5 = xzSliceForY_dmpPtr->getPitch();
-                    //auto xzSliceForYm1_dmpPtr_getBuffer_ct6 = xzSliceForYm1_dmpPtr->getBuffer();
-                    //auto xzSliceForYm1_dmpPtr_getPitch_ct7 = xzSliceForYm1_dmpPtr->getPitch();
-                    //auto bestSimInYm1_dmpPtr_getBuffer_ct8 = bestSimInYm1_dmpPtr->getBuffer();
-                    //auto out_volAgr_dmp_getBuffer_ct9 = out_volAgr_dmp.getBuffer();
-                    //auto out_volAgr_dmp_getBytesPaddedUpToDim_ct10 = out_volAgr_dmp.getBytesPaddedUpToDim(1);
-                    //auto out_volAgr_dmp_getBytesPaddedUpToDim_ct11 = out_volAgr_dmp.getBytesPaddedUpToDim(0);
-                    auto sgmParams_stepXY_ct14 = sgmParams.stepXY;
-                    auto sgmParams_p1_ct16 = sgmParams.p1;
-                    auto sgmParams_p2Weighting_ct17 = sgmParams.p2Weighting;
+                            //auto rcDeviceMipmapImage_getTextureObject_ct0 = rcDeviceMipmapImage.getTextureObject();
+                            auto rcLevelDim_x_ct1 = (unsigned int)(rcLevelDim.x());
+                            auto rcLevelDim_y_ct2 = (unsigned int)(rcLevelDim.y());
+                            //auto xzSliceForY_dmpPtr_getBuffer_ct4 = xzSliceForY_dmpPtr->getBuffer();
+                            //auto xzSliceForY_dmpPtr_getPitch_ct5 = xzSliceForY_dmpPtr->getPitch();
+                            //auto xzSliceForYm1_dmpPtr_getBuffer_ct6 = xzSliceForYm1_dmpPtr->getBuffer();
+                            //auto xzSliceForYm1_dmpPtr_getPitch_ct7 = xzSliceForYm1_dmpPtr->getPitch();
+                            //auto bestSimInYm1_dmpPtr_getBuffer_ct8 = bestSimInYm1_dmpPtr->getBuffer();
+                            //auto out_volAgr_dmp_getBuffer_ct9 = out_volAgr_dmp.getBuffer();
+                            //auto out_volAgr_dmp_getBytesPaddedUpToDim_ct10 = out_volAgr_dmp.getBytesPaddedUpToDim(1);
+                            //auto out_volAgr_dmp_getBytesPaddedUpToDim_ct11 = out_volAgr_dmp.getBytesPaddedUpToDim(0);
+                            auto sgmParams_stepXY_ct14 = sgmParams.stepXY;
+                            auto sgmParams_p1_ct16 = sgmParams.p1;
+                            auto sgmParams_p2Weighting_ct17 = sgmParams.p2Weighting;
 
-                    cgh.parallel_for(sycl::nd_range<3>(gridVolSlide * blockVolSlide, blockVolSlide),
-                                     [=](sycl::nd_item<3> item_ct1)
-                                     {
-                                         volume_agregateCostVolumeAtXinSlices_kernel(
-                                             rcDeviceMipmapImage_acc, 
-                                             rcLevelDim_x_ct1,
-                                             rcLevelDim_y_ct2, rcMipmapLevel, xzSliceForY_dmpPtr_acc,
-                                             //xzSliceForY_dmpPtr_getPitch_ct5, 
-                                             xzSliceForYm1_dmpPtr_acc,
-                                             //xzSliceForYm1_dmpPtr_getPitch_ct7, 
-                                             sampler,
-                                             bestSimInYm1_dmpPtr_acc,
-                                             out_volAgr_dmp_acc, 
-                                             //out_volAgr_dmp_getBytesPaddedUpToDim_ct10,
-                                             //out_volAgr_dmp_getBytesPaddedUpToDim_ct11, 
-                                             volDim_, axisT_,
-                                             sgmParams_stepXY_ct14, y, sgmParams_p1_ct16, sgmParams_p2Weighting_ct17,
-                                             ySign, filteringIndex, roi, item_ct1);
-                                     });
-                });
-            volume_aggregateSlice_event.wait();
+                            cgh.parallel_for(sycl::nd_range<3>(gridVolSlide * blockVolSlide, blockVolSlide),
+                                            [=](sycl::nd_item<3> item_ct1)
+                                            {
+                                                volume_agregateCostVolumeAtXinSlices_kernel(
+                                                    rcDeviceMipmapImage_acc, 
+                                                    rcLevelDim_x_ct1,
+                                                    rcLevelDim_y_ct2, rcMipmapLevel, xzSliceForY_dmpPtr_acc,
+                                                    //xzSliceForY_dmpPtr_getPitch_ct5, 
+                                                    xzSliceForYm1_dmpPtr_acc,
+                                                    //xzSliceForYm1_dmpPtr_getPitch_ct7, 
+                                                    sampler,
+                                                    bestSimInYm1_dmpPtr_acc,
+                                                    out_volAgr_dmp_acc, 
+                                                    //out_volAgr_dmp_getBytesPaddedUpToDim_ct10,
+                                                    //out_volAgr_dmp_getBytesPaddedUpToDim_ct11, 
+                                                    volDim_, axisT_,
+                                                    sgmParams_stepXY_ct14, y, sgmParams_p1_ct16, sgmParams_p2Weighting_ct17,
+                                                    ySign, filteringIndex, roi, item_ct1);
+                                            });
+                        });
+                    volume_aggregateSlice_event.wait();
+                }
         }
 
         std::swap(xzSliceForYm1_dmpPtr, xzSliceForY_dmpPtr);
