@@ -25,7 +25,7 @@ namespace depthMap {
 extern void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<float2, 2>& out_depthSimMap_dmp,
                                           const CudaDeviceMemoryPitched<float2, 2>& in_depthSimMap_dmp,
                                           float defaultSim,
-                                          cudaStream_t stream);
+                                          DeviceStream& stream);
 
 /**
  * @brief Upscale the given normal map.
@@ -37,7 +37,7 @@ extern void cuda_depthSimMapCopyDepthOnly(CudaDeviceMemoryPitched<float2, 2>& ou
 extern void cuda_normalMapUpscale(CudaDeviceMemoryPitched<float3, 2>& out_upscaledMap_dmp,
                                   const CudaDeviceMemoryPitched<float3, 2>& in_map_dmp,
                                   const ROI& roi,
-                                  cudaStream_t stream);
+                                  DeviceStream& stream);
 
 /**
  * @brief Smooth thickness map with adjacent pixels.
@@ -51,7 +51,7 @@ extern void cuda_depthThicknessSmoothThickness(CudaDeviceMemoryPitched<float2, 2
                                              const SgmParams& sgmParams,
                                              const RefineParams& refineParams,
                                              const ROI& roi,
-                                             cudaStream_t stream);
+                                             DeviceStream& stream);
 
 /**
  * @brief Upscale the given depth/thickness map, filter masked pixels and compute pixSize from thickness.
@@ -69,7 +69,7 @@ extern void cuda_computeSgmUpscaledDepthPixSizeMap(CudaDeviceMemoryPitched<float
                                                    const DeviceMipmapImage& rcDeviceMipmapImage,
                                                    const RefineParams& refineParams,
                                                    const ROI& roi,
-                                                   cudaStream_t stream);
+                                                   DeviceStream& stream);
 
 /**
  * @brief Compute the normal map from the depth/sim map (only depth is used).
@@ -85,7 +85,7 @@ extern void cuda_depthSimMapComputeNormal(CudaDeviceMemoryPitched<float3, 2>& ou
                                           const int rcDeviceCameraParamsId,
                                           const int stepXY,
                                           const ROI& roi,
-                                          cudaStream_t stream);
+                                          DeviceStream& stream);
 
 /**
  * @brief Optimize a depth/sim map with the refineFused depth/sim map and the SGM depth/pixSize map.
@@ -109,7 +109,7 @@ extern void cuda_depthSimMapOptimizeGradientDescent(CudaDeviceMemoryPitched<floa
                                                     const DeviceMipmapImage& rcDeviceMipmapImage,
                                                     const RefineParams& refineParams,
                                                     const ROI& roi,
-                                                    cudaStream_t stream);
+                                                    DeviceStream& stream);
 
 } // namespace depthMap
 } // namespace aliceVision

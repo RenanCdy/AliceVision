@@ -594,9 +594,8 @@ void volume_refineSimilarity_kernel(
       normalize(patch.y);
 
         // corresponding to nullptr check
-      bool in_sgmNormalMapPtr_is_null = (in_sgmNormalMap_d.get_size() == 0);
-
-      if(!in_sgmNormalMapPtr_is_null) // initialize patch normal from input normal map
+      size_t in_sgmNormalMapPtr_count = in_sgmNormalMap_d.get_count();
+      if(in_sgmNormalMapPtr_count > 1) // initialize patch normal from input normal map
       {
         // TODO: not optimized to float3
         auto& temp = get2DBufferAt(in_sgmNormalMap_d, vx, vy);

@@ -472,7 +472,6 @@ try {
     ImageLocker rcDeviceMipmapImage_locker(rcDeviceMipmapImage.getMipmappedArray());
     ImageLocker tcDeviceMipmapImage_locker(tcDeviceMipmapImage.getMipmappedArray());
 
-    sycl::sampler sampler(sycl::coordinate_normalization_mode::normalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
 
     {
         sycl::queue& queue = (sycl::queue&)stream;

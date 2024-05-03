@@ -24,7 +24,7 @@ class DeviceStream;
  * @param[in] value the value to initalize with
  * @param[in] stream the stream for gpu execution
  */
-extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSim, 3>& inout_volume_dmp, TSim value, cudaStream_t stream);
+extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSim, 3>& inout_volume_dmp, TSim value, DeviceStream& stream);
 
 /**
  * @brief Initialize all the given similarity volume in device memory to the given value.
@@ -32,7 +32,7 @@ extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSim, 3>& inout_volume
  * @param[in] value the value to initalize with
  * @param[in] stream the stream for gpu execution
  */
-extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, TSimRefine value, cudaStream_t stream);
+extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, TSimRefine value, DeviceStream& stream);
 
 /**
  * @brief Add similarity values from a given volume to another given volume.
@@ -40,7 +40,7 @@ extern void cuda_volumeInitialize(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_
  * @param[in] in_volume_dmp the input similarity volume in device memory
  * @param[in] stream the stream for gpu execution
  */
-extern void cuda_volumeAdd(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volume_dmp, cudaStream_t stream);
+extern void cuda_volumeAdd(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_dmp, const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volume_dmp, DeviceStream& stream);
 
 /**
  * @brief Update second best similarity volume uninitialized values with first best volume values.
@@ -48,7 +48,7 @@ extern void cuda_volumeAdd(CudaDeviceMemoryPitched<TSimRefine, 3>& inout_volume_
  * @param[out] inout_volSecBestSim_dmp the second best similarity volume in device memory
  * @param[in] stream the stream for gpu execution
  */
-extern void cuda_volumeUpdateUninitializedSimilarity(const CudaDeviceMemoryPitched<TSim, 3>& in_volBestSim_dmp, CudaDeviceMemoryPitched<TSim, 3>& inout_volSecBestSim_dmp, cudaStream_t stream);
+extern void cuda_volumeUpdateUninitializedSimilarity(const CudaDeviceMemoryPitched<TSim, 3>& in_volBestSim_dmp, CudaDeviceMemoryPitched<TSim, 3>& inout_volSecBestSim_dmp, DeviceStream& stream);
 
 /**
  * @brief Compute the best / second best similarity volume for the given RC / TC.
@@ -100,7 +100,7 @@ extern void cuda_volumeRefineSimilarity(CudaDeviceMemoryPitched<TSimRefine, 3>& 
                                         const RefineParams& refineParams, 
                                         const Range& depthRange,
                                         const ROI& roi,
-                                        cudaStream_t stream);
+                                        DeviceStream& stream);
 
 /**
  * @brief Filter / Optimize the given similarity volume
@@ -124,7 +124,7 @@ extern void cuda_volumeOptimize(CudaDeviceMemoryPitched<TSim, 3>& out_volSimFilt
                                 const SgmParams& sgmParams, 
                                 const int lastDepthIndex,
                                 const ROI& roi,
-                                cudaStream_t stream);
+                                DeviceStream& stream);
 
 /**
  * @brief Retrieve the best depth/sim in the given similarity volume.
@@ -146,7 +146,7 @@ extern void cuda_volumeRetrieveBestDepth(CudaDeviceMemoryPitched<float2, 2>& out
                                          const SgmParams& sgmParams, 
                                          const Range& depthRange,
                                          const ROI& roi, 
-                                         cudaStream_t stream);
+                                         DeviceStream& stream);
 
 /**
  * @brief Retrieve the best depth/sim in the given refined similarity volume.
@@ -163,7 +163,7 @@ extern void cuda_volumeRefineBestDepth(CudaDeviceMemoryPitched<float2, 2>& out_r
                                        const CudaDeviceMemoryPitched<TSimRefine, 3>& in_volSim_dmp, 
                                        const RefineParams& refineParams, 
                                        const ROI& roi, 
-                                       cudaStream_t stream);
+                                       DeviceStream& stream);
 
 } // namespace depthMap
 } // namespace aliceVision

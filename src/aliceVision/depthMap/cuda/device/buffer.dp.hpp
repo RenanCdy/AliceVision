@@ -134,7 +134,7 @@ namespace depthMap {
         if (level == 0)
         {
             float one_over_width = 1.0f / (float)width;
-            float one_over_height = 1.0f / (float)width;
+            float one_over_height = 1.0f / (float)height;
             float u = (x + 0.5f) * one_over_width;
             float v = (y + 0.5f) * one_over_height;
             u = (u>=0.f)?( (u<=1.f)?u:1.f ):0.f;

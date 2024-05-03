@@ -7,6 +7,7 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
+#include "aliceVision/depthMap/cuda/device/matrix.dp.hpp"
 
 namespace aliceVision {
 namespace depthMap {
